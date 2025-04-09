@@ -2,30 +2,42 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard climático</title>
+  <title>Login y Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* Estilos generales para centrar contenido */
-    body {
+    /* Reinicio de márgenes y ajustes básicos */
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      background-color: #f0f2f5;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
       font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
+    }
+
+    /* Contenedor general para centrar el contenido en toda la pantalla */
+    .container {
       display: flex;
       justify-content: center;
       align-items: center;
+      width: 100%;
       height: 100vh;
-      flex-direction: column;
+      padding: 20px;
     }
 
-    /* Contenedor del formulario de login */
+    /* Estilos para el formulario de login */
     .login-container {
       background-color: #fff;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 400px;
       text-align: center;
-      width: 300px;
-      margin-bottom: 20px;
     }
 
     .login-container img {
@@ -38,19 +50,21 @@
 
     .login-container input {
       width: 100%;
-      padding: 10px;
-      margin: 8px 0;
+      padding: 12px;
+      margin-bottom: 15px;
       border: 1px solid #ccc;
-      border-radius: 5px;
+      border-radius: 4px;
+      font-size: 1rem;
     }
 
     .login-container button {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
+      border: none;
+      border-radius: 4px;
       background-color: #4CAF50;
       color: white;
-      border: none;
-      border-radius: 5px;
+      font-size: 1rem;
       cursor: pointer;
       font-weight: bold;
     }
@@ -59,56 +73,73 @@
       background-color: #45a049;
     }
 
-    .error {
+    .login-container .error {
       color: red;
       margin-top: 10px;
     }
 
-    /* Contenedor que utiliza flexbox para centrar el contenido */
+    /* Estilos para el dashboard responsivo */
     .dashboard-container {
+      display: none; /* Se mostrará tras login correcto */
+      width: 100%;
+      height: 100vh; /* Cubre toda la pantalla */
+      background-color: #fff;
+    }
+
+    .dashboard-inner {
       display: flex;
       justify-content: center;
       align-items: center;
       width: 100%;
-      height: 100vh; /* Ocupa el 100% del alto de la ventana */
-      background-color: #f0f2f5; /* Opcional: fondo para diferenciar */
-      padding: 10px; /* Asegura que haya algo de espacio en pantallas pequeñas */
+      height: 100%;
     }
 
-    /* Estilos para el iframe, usando medidas relativas al viewport */
-    .dashboard-container iframe {
-      width: 90vw; /* 90% del ancho de la ventana */
-      height: 90vh; /* 90% del alto de la ventana */
+    /* Ajustamos el iframe para que se acomode de manera responsiva */
+    .dashboard-inner iframe {
+      width: 90vw;  /* 90% del ancho del viewport */
+      height: 90vh; /* 90% del alto del viewport */
       border: none;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Contenedor del formulario de login -->
-  <div id="login-container" class="login-container">
-    <img src="https://grupoporres.com.mx/assets/images/resources/logo.png" alt="Imagen del usuario">
-    <input type="text" id="username" placeholder="Usuario">
-    <input type="password" id="password" placeholder="Contraseña">
-    <button onclick="login()">Iniciar sesión</button>
-    <div id="error" class="error"></div>
+  <!-- Contenedor principal de login -->
+  <div id="loginContainer" class="container">
+    <div class="login-container">
+      <!-- Logo o imagen -->
+      <img src="https://via.placeholder.com/100" alt="Logo">
+      <!-- Campos de texto para usuario y contraseña -->
+      <input type="text" id="username" placeholder="Usuario">
+      <input type="password" id="password" placeholder="Contraseña">
+      <!-- Botón para iniciar sesión -->
+      <button onclick="login()">Iniciar sesión</button>
+      <!-- Mensaje de error -->
+      <div id="loginError" class="error"></div>
+    </div>
   </div>
-   <script>
-    function login() {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      const error = document.getElementById("error");
 
-      // Validación de usuario estático
-      if (username === "admin" && password === "Gporres2025") {
-        // Oculta el formulario de login y muestra el dashboard
-        document.getElementById("login-container").style.display = "none";
-        document.getElementById("dashboard-container").style.display = "block";
-         <!-- Contenedor del dashboard con el iframe -->
-  <div id="dashboard-container" class="dashboard-container">
-    <iframe title="Dashboard - Climático" width="800" height="486" src="https://app.powerbi.com/view?r=eyJrIjoiZDQ5OGYwM2MtNDcxNC00ZTQwLWE1OWItZjJhMzI3ZWJlY2VlIiwidCI6IjU5ODY5YzBkLWQ0ZDktNGRlZC1hNDg0LTI1YzFhMmU0YTU0MCJ9" frameborder="0" allowFullScreen="true"></iframe>
+  <!-- Contenedor del dashboard (inicialmente oculto) -->
+  <div id="dashboardContainer" class="dashboard-container">
+    <div class="dashboard-inner">
+      <!-- Iframe responsivo con el dashboard -->
+      <iframe title="Dashboard - Climático" src="https://app.powerbi.com/view?r=eyJrIjoiZDQ5OGYwM2MtNDcxNC00ZTQwLWE1OWItZjJhMzI3ZWJlY2VlIiwidCI6IjU5ODY5YzBkLWQ0ZDktNGRlZC1hNDg0LTI1YzFhMmU0YTU0MCJ9" allowFullScreen="true"></iframe>
+    </div>
   </div>
+
+  <script>
+    function login() {
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      const errorDiv = document.getElementById("loginError");
+
+      // Credenciales estáticas
+      if(user === "admin" && pass === "1234") {
+        // Ocultar el login y mostrar el dashboard
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("dashboardContainer").style.display = "block";
       } else {
-        error.textContent = "Usuario o contraseña incorrectos.";
+        errorDiv.textContent = "Usuario o contraseña incorrectos.";
       }
     }
   </script>
