@@ -5,7 +5,7 @@ header("Content-Type: application/json");
 // Configuración de la conexión a la base de datos
 $host = 'cloud3.googiehost.com';
 $db   = 'mrrobert_gporres';          // Nombre de tu base de datos
-$user = 'mrrobert_root';   // Tu usuario de MySQL
+$user = 'mrrobert__rHVq37LQDmRLrrgte8O471LgnDGsdqx0@localhost';   // Tu usuario de MySQL
 $pass = 'Sysadm2227';     // Tu contraseña de MySQL
 $charset = 'utf8mb4';
 
