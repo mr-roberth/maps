@@ -5,7 +5,7 @@ header("Content-Type: application/json");
 // Configuración de la conexión a la base de datos
 $host = '198.45.114.194';
 $db   = 'mrrobert_gporres';          // Nombre de tu base de datos
-$user = 'mrrobert__Gj0JauYwEuLC-p1RtHXjtZVVq2nKwbwk@localhost';   // Tu usuario de MySQL
+$user = 'root';   // Tu usuario de MySQL
 $pass = 'Sysadm2227';     // Tu contraseña de MySQL
 $charset = 'utf8mb4';
 
