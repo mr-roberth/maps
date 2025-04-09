@@ -1,1 +1,113 @@
-<iframe title="Dashboard - Climático" width="1024" height="804" src="https://app.powerbi.com/view?r=eyJrIjoiZDQ5OGYwM2MtNDcxNC00ZTQwLWE1OWItZjJhMzI3ZWJlY2VlIiwidCI6IjU5ODY5YzBkLWQ0ZDktNGRlZC1hNDg0LTI1YzFhMmU0YTU0MCJ9&pageName=a824767bd7e56245c6d8" frameborder="0" allowFullScreen="true"></iframe>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard climático</title>
+  <style>
+    /* Estilos generales para centrar contenido */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    /* Contenedor del formulario de login */
+    .login-container {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      width: 300px;
+      margin-bottom: 20px;
+    }
+
+    .login-container img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-bottom: 20px;
+    }
+
+    .login-container input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .login-container button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .login-container button:hover {
+      background-color: #45a049;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+
+    /* Contenedor del dashboard para centrar el iframe */
+    .dashboard-container {
+      display: none; /* Se muestra al ingresar correctamente */
+      text-align: center;
+    }
+
+    .dashboard-container iframe {
+      border: 0;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Contenedor del formulario de login -->
+  <div id="login-container" class="login-container">
+    <img src="https://via.placeholder.com/100" alt="Imagen del usuario">
+    <input type="text" id="username" placeholder="Usuario">
+    <input type="password" id="password" placeholder="Contraseña">
+    <button onclick="login()">Iniciar sesión</button>
+    <div id="error" class="error"></div>
+  </div>
+
+  <!-- Contenedor del dashboard con el iframe -->
+  <div id="dashboard-container" class="dashboard-container">
+    <iframe title="Dashboard - Climático" width="1024" height="1060" src="https://app.powerbi.com/view?r=eyJrIjoiZDQ5OGYwM2MtNDcxNC00ZTQwLWE1OWItZjJhMzI3ZWJlY2VlIiwidCI6IjU5ODY5YzBkLWQ0ZDktNGRlZC1hNDg0LTI1YzFhMmU0YTU0MCJ9" allowFullScreen="true"></iframe>
+  </div>
+
+  <script>
+    function login() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const error = document.getElementById("error");
+
+      // Validación de usuario estático
+      if (username === "admin" && password === "Gporres2025") {
+        // Oculta el formulario de login y muestra el dashboard
+        document.getElementById("login-container").style.display = "none";
+        document.getElementById("dashboard-container").style.display = "block";
+      } else {
+        error.textContent = "Usuario o contraseña incorrectos.";
+      }
+    }
+  </script>
+
+</body>
+</html>
