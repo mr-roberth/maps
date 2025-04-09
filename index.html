@@ -92,13 +92,7 @@
     <button onclick="login()">Iniciar sesión</button>
     <div id="error" class="error"></div>
   </div>
-
-  <!-- Contenedor del dashboard con el iframe -->
-  <div id="dashboard-container" class="dashboard-container">
-    <iframe title="Dashboard - Climático" width="800" height="486" src="https://app.powerbi.com/view?r=eyJrIjoiZDQ5OGYwM2MtNDcxNC00ZTQwLWE1OWItZjJhMzI3ZWJlY2VlIiwidCI6IjU5ODY5YzBkLWQ0ZDktNGRlZC1hNDg0LTI1YzFhMmU0YTU0MCJ9" frameborder="0" allowFullScreen="true"></iframe>
-  </div>
-
-  <script>
+   <script>
     function login() {
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
@@ -109,6 +103,10 @@
         // Oculta el formulario de login y muestra el dashboard
         document.getElementById("login-container").style.display = "none";
         document.getElementById("dashboard-container").style.display = "block";
+         <!-- Contenedor del dashboard con el iframe -->
+  <div id="dashboard-container" class="dashboard-container">
+    <iframe title="Dashboard - Climático" width="800" height="486" src="https://app.powerbi.com/view?r=eyJrIjoiZDQ5OGYwM2MtNDcxNC00ZTQwLWE1OWItZjJhMzI3ZWJlY2VlIiwidCI6IjU5ODY5YzBkLWQ0ZDktNGRlZC1hNDg0LTI1YzFhMmU0YTU0MCJ9" frameborder="0" allowFullScreen="true"></iframe>
+  </div>
       } else {
         error.textContent = "Usuario o contraseña incorrectos.";
       }
