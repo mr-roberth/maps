@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Login y Dashboard</title>
+  <title>Dashboard - Climático</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     /* Reinicio de márgenes y ajustes básicos */
@@ -108,7 +108,7 @@
   <div id="loginContainer" class="container">
     <div class="login-container">
       <!-- Logo o imagen -->
-      <img src="https://via.placeholder.com/100" alt="Logo">
+      <img src="https://grupoporres.com.mx/assets/images/resources/logo.png" alt="Logo">
       <!-- Campos de texto para usuario y contraseña -->
       <input type="text" id="username" placeholder="Usuario">
       <input type="password" id="password" placeholder="Contraseña">
@@ -134,7 +134,7 @@
       const errorDiv = document.getElementById("loginError");
 
       // Credenciales estáticas
-      if(user === "admin" && pass === "1234") {
+      if(user === "admin" && pass === "Gporres2025") {
         // Ocultar el login y mostrar el dashboard
         document.getElementById("loginContainer").style.display = "none";
         document.getElementById("dashboardContainer").style.display = "block";
