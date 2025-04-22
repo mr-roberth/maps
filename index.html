@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Climático</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="loginContainer" class="container">
+    <div class="login-container">
+      <img src="https://grupoporres.com.mx/assets/images/resources/logo.png" alt="Logo">
+      <input type="text" id="username" placeholder="Usuario">
+      <input type="password" id="password" placeholder="Contraseña">
+      <button id="loginButton">Iniciar sesión</button>
+      <div id="loginError" class="error"></div>
+    </div>
+  </div>
+
+  <div id="dashboardContainer" class="dashboard-container">
+    <div class="dashboard-inner">
+      <iframe title="Dashboard - Climático" width="800" height="836" src="https://app.powerbi.com/view?r=eyJrIjoiZDQ5OGYwM2MtNDcxNC00ZTQwLWE1OWItZjJhMzI3ZWJlY2VlIiwidCI6IjU5ODY5YzBkLWQ0ZDktNGRlZC1hNDg0LTI1YzFhMmU0YTU0MCJ9" frameborder="0" allowFullScreen="true"></iframe>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
