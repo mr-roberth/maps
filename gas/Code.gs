@@ -22,10 +22,12 @@ function doGet(e) {
     const action = String(p.action || 'ping');
     let data;
     if (action === 'ping') data = { ok: true, version: '1.0.0', time: new Date().toISOString() };
-    else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), spreadsheetId: SPREADSHEET_ID };
+    else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
     else if (action === 'recent') data = { ok: true, recent: recent_(20) };
+    else if (action === 'catalog') data = { ok: true, catalog: catalog_() };
+    else if (action === 'lookupMaterial') data = { ok: true, material: lookupMaterial_(upper_(p.code)) };
     else if (action === 'saveMapping') data = saveMapping_(p);
     else if (action === 'updateRack') data = updateRack_(p);
     else if (action === 'deleteMapping') data = deleteMapping_(p);
@@ -63,7 +65,7 @@ function ensureStructure_() {
   const defs = [
     ['MAPEO', ['ID','FechaHora','Rack','Posicion','Nivel','CodigoMaterial','Descripcion','Observaciones','Usuario','Estado']],
     ['RACKS', ['Rack','Posiciones','Niveles','Activo','Notas','UltimaActualizacion']],
-    ['CATALOGO', ['CodigoMaterial','Descripcion','Unidad','Activo']],
+    ['CATALOGO', ['CodigoMaterial','Descripcion','Categoria','Unidad','Activo']],
     ['CONFIG', ['Clave','Valor','Descripcion','Editable']]
   ];
   defs.forEach(function(d) {
@@ -182,11 +184,20 @@ function deleteMapping_(b) {
   return { ok:true, id:id };
 }
 
-function catalogDescription_(code) {
+function catalog_() {
   const sh = sheet_(SHEETS.CATALOGO), last = sh.getLastRow();
-  if (last < 2) return '';
-  const r = sh.getRange(2,1,last-1,4).getValues().find(function(x){return upper_(x[0])===code && x[3]!==false});
-  return r ? clean_(r[1]) : '';
+  if (last < 2) return [];
+  return sh.getRange(2,1,last-1,5).getValues().filter(function(r){return r[0] && r[4]!==false}).map(function(r){return {code:upper_(r[0]),description:clean_(r[1]),category:clean_(r[2]),unit:clean_(r[3])}});
+}
+
+function lookupMaterial_(code) {
+  const r = catalog_().find(function(x){return x.code===code});
+  return r || null;
+}
+
+function catalogDescription_(code) {
+  const r = lookupMaterial_(code);
+  return r ? r.description : '';
 }
 
 function upsertCatalog_(code,description) {
@@ -199,5 +210,5 @@ function upsertCatalog_(code,description) {
       return;
     }
   }
-  sh.appendRow([code,description,'',true]);
+  sh.appendRow([code,description,'','',true]);
 }
