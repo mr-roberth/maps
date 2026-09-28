@@ -1,0 +1,9 @@
+{
+  "name": "Oleolab · Mapeo de Racks",
+  "short_name": "Racks Oleolab",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f7f5",
+  "theme_color": "#0d4a35",
+  "description": "Mini app móvil para mapear Rack, posición, nivel y códigos de material."
+}
