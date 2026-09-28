@@ -49,11 +49,9 @@ El código ya está en `gas/Code.gs`.
    - Ejecutar como: tú.
    - Quién tiene acceso: cualquiera.
 8. Copia la URL terminada en `/exec`.
-9. Abre la mini app en el celular, toca ⚙ e introduce:
-   - URL del Web App.
-   - MAPEO_API_KEY.
-   - Nombre del capturista/dispositivo.
-10. Pulsa **Probar**.
+9. Abre la mini app en el celular. La URL del Web App ya está preconfigurada.
+10. Toca ⚙ e introduce una sola vez la **MAPEO_API_KEY** y el nombre del capturista/dispositivo.
+11. Pulsa **Probar**. La app mostrará el resultado dentro de la ventana de configuración y, al guardar, conservará la clave únicamente en el almacenamiento local de ese navegador.
 
 Después de eso el sistema queda operativo.
 
@@ -68,3 +66,8 @@ Después de eso el sistema queda operativo.
 7. Consultar después cualquier código desde **Buscar**.
 
 La app guarda registros pendientes localmente si se pierde la conexión y permite sincronizarlos al recuperar señal.
+
+
+## Seguridad
+
+El repositorio `maps` es público. Por esa razón la clave `MAPEO_API_KEY` **no se incluye en el código ni en Google Sheets**. La URL de GAS sí está preconfigurada porque no es un secreto. La clave permanece en Script Properties de Apps Script y, después de introducirla, en `localStorage` del celular.
