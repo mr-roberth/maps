@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d4a35">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Oleolab · Mapeo de Racks</title>
+<style>
+:root{--g:#0d4a35;--g2:#1f7a55;--lime:#69c43b;--pale:#eaf4ee;--gold:#d99d21;--ink:#17372d;--muted:#687971;--line:#dce8e1;--bg:#f4f7f5;--white:#fff;--danger:#b43c3c;--shadow:0 12px 32px rgba(13,74,53,.10);--r:20px}
+*{box-sizing:border-box}html{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}body{margin:0;min-height:100vh;padding-bottom:92px}button,input,textarea{font:inherit}button{touch-action:manipulation}.hidden{display:none!important}
+.header{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:max(10px,env(safe-area-inset-top)) 16px 10px;background:rgba(255,255,255,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px}.logo{width:42px;height:42px;border-radius:13px;background:var(--g);display:grid;place-items:center;color:#fff;font-weight:900;letter-spacing:-2px}.brand b{display:block;letter-spacing:.12em}.brand small{display:block;color:var(--muted);font-weight:700;margin-top:2px}
+.icon{border:0;width:44px;height:44px;border-radius:14px;background:var(--pale);color:var(--g);font-size:20px}
+main{max-width:820px;margin:auto;padding:16px}.view{display:none}.view.active{display:block}.heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:2px 0 14px}.eyebrow{margin:0 0 4px;color:var(--g2);font-size:11px;font-weight:900;letter-spacing:.13em}.heading h1,.card h2{margin:0}.heading h1{font-size:27px}
+.badge{padding:8px 11px;border-radius:999px;font-size:11px;font-weight:900;background:#fff1cf;color:#806015;white-space:nowrap}.badge.ok{background:#e7f7e5;color:#246128}.badge.off{background:#f3eeee;color:#8c3c3c}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}.location{background:linear-gradient(145deg,#0d4a35,#176347);color:#fff;border:0}.location-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.location-top span{font-size:12px;opacity:.8}.location-top strong{display:block;font-size:24px;margin-top:3px}.btn{border:0;border-radius:14px;padding:13px 16px;font-weight:900;cursor:pointer}.btn.primary{background:var(--g);color:#fff}.location .btn.primary{background:var(--lime);color:#163b2c}.btn.secondary{background:var(--pale);color:var(--g)}.btn.ghost{background:rgba(255,255,255,.14);color:inherit;border:1px solid rgba(255,255,255,.25)}.btn.wide{width:100%}.btn.big{min-height:54px;font-size:15px}
+.rack-strip{display:flex;gap:8px;overflow-x:auto;padding:14px 0 8px;scrollbar-width:none}.rack-strip::-webkit-scrollbar{display:none}.rack-chip{flex:0 0 42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.10);color:#fff;font-weight:900}.rack-chip.active{background:#fff;color:var(--g)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.step-label{font-size:12px;font-weight:800;color:rgba(255,255,255,.8)}.stepper{display:grid;grid-template-columns:48px 1fr 48px;margin-top:6px;background:#fff;border-radius:14px;overflow:hidden}.stepper button{border:0;background:#edf5f1;color:var(--g);font-size:22px}.stepper input{min-width:0;border:0;text-align:center;font-size:20px;font-weight:900;color:var(--g);padding:12px;background:#fff}.walk{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bottom:12px}input,textarea{width:100%;border:1px solid #ceddd5;border-radius:14px;padding:14px;background:#fff;color:var(--ink);outline:none;margin-top:6px;font-size:16px}input:focus,textarea:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(31,122,85,.11)}textarea{resize:vertical}.code-row{display:grid;grid-template-columns:1fr 88px;gap:10px}.scan{border:0;border-radius:14px;background:var(--pale);color:var(--g);font-weight:900;margin-top:23px}.scan span{display:block;font-size:10px;margin-top:3px}
+.keep{display:flex;justify-content:space-between;gap:10px;padding:11px 12px;border-radius:13px;background:#f4f8f5;margin:2px 0 12px;font-size:12px}.keep strong{color:var(--g)}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.card-head h2{font-size:20px}.empty{padding:24px 12px;text-align:center;color:var(--muted);font-size:13px}
+.rack-map{overflow:auto}.rack-table{min-width:100%;display:grid;gap:7px}.rack-row{display:grid;grid-template-columns:56px repeat(var(--cols),minmax(56px,1fr));gap:7px}.rack-cell{min-height:52px;border-radius:12px;background:#f3f7f4;border:1px solid var(--line);padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:10px}.rack-cell.level{background:var(--g);color:#fff;font-weight:900}.rack-cell.used{background:#e4f5e5;border-color:#9dd89d;color:#205f27}.rack-cell b{font-size:12px}
+.list{display:grid;gap:8px}.item{display:grid;grid-template-columns:50px 1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:14px}.loc{background:var(--pale);border-radius:10px;padding:8px 4px;text-align:center;font-weight:900;color:var(--g)}.item strong{display:block}.item small{display:block;color:var(--muted);margin-top:2px}.item time{font-size:10px;color:var(--muted)}
+.searchbox{display:flex;gap:10px}.searchbox input{margin:0}.searchbox .btn{flex:0 0 auto}.results{display:grid;gap:10px;margin-top:12px}.result{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(13,74,53,.06)}.result .where{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.pill{padding:6px 9px;border-radius:999px;background:var(--pale);color:var(--g);font-size:11px;font-weight:900}
+.overview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.rack-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;text-align:left}.rack-card b{font-size:24px;color:var(--g)}.rack-card small{display:block;color:var(--muted);margin-top:4px}.rack-card.ready{background:var(--pale);border-color:#b9d8c8}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:35;display:grid;grid-template-columns:repeat(3,1fr);background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:8px 10px max(8px,env(safe-area-inset-bottom))}.nav{border:0;background:transparent;color:var(--muted);padding:7px}.nav span{display:block;font-size:21px}.nav small{font-size:10px;font-weight:900}.nav.active{color:var(--g)}
+dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;height:100%;margin:0}.sheet{position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:24px 24px 0 0;padding:18px;max-height:88vh;overflow:auto;box-shadow:0 -20px 50px rgba(0,0,0,.18)}dialog::backdrop{background:rgba(8,25,18,.45);backdrop-filter:blur(2px)}.dialog-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.muted{color:var(--muted);font-size:12px;line-height:1.5}.link{display:block;margin-top:14px;text-align:center;color:var(--g);font-weight:900;text-decoration:none}
+.toast{position:fixed;z-index:60;left:50%;bottom:102px;transform:translateX(-50%) translateY(20px);background:#12291f;color:#fff;padding:11px 16px;border-radius:999px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;transition:.2s;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.loading{position:fixed;z-index:70;inset:0;background:rgba(255,255,255,.76);display:grid;place-items:center}.loading>div{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 22px;box-shadow:var(--shadow);font-weight:900;color:var(--g)}
+.scanner{position:absolute;inset:0;background:#07130e;color:#fff;padding:16px}.scanner video{width:100%;height:70vh;object-fit:cover;border-radius:18px;margin-top:12px}.scanline{position:absolute;left:12%;right:12%;top:42%;height:2px;background:var(--lime);box-shadow:0 0 14px var(--lime)}
+@media(min-width:700px){main{padding:22px}.overview{grid-template-columns:repeat(6,1fr)}.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%);bottom:20px;border-radius:24px}.bottom{left:50%;right:auto;width:620px;transform:translateX(-50%);border:1px solid var(--line);border-radius:20px 20px 0 0}}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div><div id="loading" class="loading hidden"><div>Actualizando…</div></div>
+<header class="header"><div class="brand"><div class="logo">OL</div><div><b>OLEOLAB</b><small>Mapeo de Racks</small></div></div><button id="settings" class="icon">⚙</button></header>
+<main>
+<section id="capture" class="view active">
+  <div class="heading"><div><p class="eyebrow">LEVANTAMIENTO EN CAMPO</p><h1>Ubicación física</h1></div><span id="status" class="badge">Backend pendiente</span></div>
+  <div class="card location">
+    <div class="location-top"><div><span>Ubicación activa</span><strong id="locationLabel">Rack A · P1 · N1</strong></div><button id="rackConfig" class="btn ghost">Configurar</button></div>
+    <div id="rackStrip" class="rack-strip"></div>
+    <div class="grid2">
+      <label class="step-label">Posición<div class="stepper"><button type="button" data-step="p" data-dir="-1">−</button><input id="pos" type="number" min="1" inputmode="numeric" value="1"><button type="button" data-step="p" data-dir="1">＋</button></div></label>
+      <label class="step-label">Nivel<div class="stepper"><button type="button" data-step="n" data-dir="-1">−</button><input id="level" type="number" min="1" inputmode="numeric" value="1"><button type="button" data-step="n" data-dir="1">＋</button></div></label>
+    </div>
+    <div class="walk"><button id="prev" class="btn ghost">← Anterior</button><button id="next" class="btn primary">Siguiente →</button></div>
+  </div>
+  <form id="mapForm" class="card">
+    <div class="code-row"><label>Código de material<input id="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Escanea o escribe"></label><button id="scan" type="button" class="scan">▣<span>Escanear</span></button></div>
+    <label>Descripción<input id="desc" autocomplete="off" placeholder="Opcional; se completa si ya existe"></label>
+    <label>Observaciones<textarea id="notes" rows="2" placeholder="Ej. costado derecho, caja superior…"></textarea></label>
+    <div class="keep"><span>Después de guardar</span><strong>Conservar Rack / Posición / Nivel</strong></div>
+    <button class="btn primary big wide" type="submit">＋ Guardar código aquí</button>
+  </form>
+  <div class="card"><div class="card-head"><div><p class="eyebrow">RACK ACTUAL</p><h2 id="rackTitle">Rack A</h2></div><button id="refreshRack" class="icon">↻</button></div><div id="rackMap" class="rack-map"><div class="empty">Configura el rack para ver su mapa.</div></div></div>
+  <div class="card"><div class="card-head"><div><p class="eyebrow">RECIENTES</p><h2>Últimos registros</h2></div><button id="sync" class="btn secondary">Sincronizar</button></div><div id="recent" class="list"><div class="empty">Sin registros.</div></div></div>
+</section>
+<section id="search" class="view"><div class="heading"><div><p class="eyebrow">LOCALIZADOR</p><h1>¿Dónde está?</h1></div></div><div class="card"><div class="searchbox"><input id="searchInput" type="search" placeholder="Código o descripción"><button id="searchBtn" class="btn primary">Buscar</button></div></div><div id="searchResults" class="results"><div class="empty">Busca un material para ver todas sus ubicaciones.</div></div></section>
+<section id="racks" class="view"><div class="heading"><div><p class="eyebrow">MAPA MAESTRO</p><h1>Racks A–Z</h1></div></div><div id="overview" class="overview"></div></section>
+</main>
+<nav class="bottom"><button class="nav active" data-view="capture"><span>⌖</span><small>Capturar</small></button><button class="nav" data-view="search"><span>⌕</span><small>Buscar</small></button><button class="nav" data-view="racks"><span>▦</span><small>Racks</small></button></nav>
+
+<dialog id="settingsDialog"><form method="dialog" class="sheet" id="settingsForm"><div class="dialog-head"><div><p class="eyebrow">CONEXIÓN</p><h2>Configuración</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">La URL de GAS, la clave y el nombre del capturista se guardan solo en este celular.</p><label>URL del Web App GAS<input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"></label><label>Clave de captura<input id="apiKey" type="password" autocomplete="off" placeholder="MAPEO_API_KEY"></label><label>Capturista / dispositivo<input id="userName" type="text" placeholder="Ej. Roberto · Celular 1"></label><div class="dialog-actions"><button id="test" type="button" class="btn secondary">Probar</button><button id="saveSettings" value="default" class="btn primary">Guardar</button></div><a class="link" href="https://docs.google.com/spreadsheets/d/12SCiQm8V1KWoDCcvSME3rLUsQUM7YNqKPbT7IsKf2s4/edit" target="_blank" rel="noopener">Abrir BD en Google Sheets ↗</a></form></dialog>
+
+<dialog id="rackDialog"><form method="dialog" class="sheet" id="rackForm"><div class="dialog-head"><div><p class="eyebrow">CONFIGURACIÓN FÍSICA</p><h2 id="rackDialogTitle">Rack A</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">Registra lo que observes; puedes corregirlo después.</p><div class="grid2"><label>Posiciones<input id="rackPositions" type="number" min="1" max="50" inputmode="numeric" value="6"></label><label>Niveles<input id="rackLevels" type="number" min="1" max="10" inputmode="numeric" value="3"></label></div><label>Notas<textarea id="rackNotes" rows="3" placeholder="Ej. nivel 4 solo de P1 a P4…"></textarea></label><div class="dialog-actions"><button value="cancel" class="btn secondary">Cancelar</button><button id="rackSave" value="default" class="btn primary">Guardar rack</button></div></form></dialog>
+
+<dialog id="scannerDialog"><div class="scanner"><div class="dialog-head"><div><p class="eyebrow" style="color:#9ddf7a">CÁMARA</p><h2>Escanear código</h2></div><button id="closeScanner" class="icon">×</button></div><video id="video" autoplay muted playsinline></video><div class="scanline"></div><p>Apunta al código de barras.</p></div></dialog>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.from(document.querySelectorAll(s))};
+var DB_URL="https://docs.google.com/spreadsheets/d/12SCiQm8V1KWoDCcvSME3rLUsQUM7YNqKPbT7IsKf2s4/edit";
+var cfg=JSON.parse(localStorage.getItem("oleolabRackCfg")||"{}");
+var state={rack:localStorage.getItem("rack")||"A",position:Number(localStorage.getItem("pos")||1),level:Number(localStorage.getItem("level")||1),racks:{},records:[],recent:JSON.parse(localStorage.getItem("rackRecent")||"[]"),pending:JSON.parse(localStorage.getItem("rackPending")||"[]")};
+var scanStream=null,scanTimer=null;
+function toast(t){var x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(function(){x.classList.remove("show")},2200)}
+function loading(v){$("#loading").classList.toggle("hidden",!v)}
+function saveState(){localStorage.setItem("rack",state.rack);localStorage.setItem("pos",state.position);localStorage.setItem("level",state.level);localStorage.setItem("rackPending",JSON.stringify(state.pending));localStorage.setItem("rackRecent",JSON.stringify(state.recent.slice(0,30)))}
+function rackCfg(r){return state.racks[r]||{rack:r,positions:0,levels:0,notes:""}}
+function updateStatus(ok,text){var b=$("#status");b.textContent=text;b.className="badge "+(ok?"ok":"off")}
+function api(action,params){
+ return new Promise(function(resolve,reject){
+   if(!cfg.gasUrl)return reject(new Error("Falta URL de GAS"));
+   var cb="cb_"+Date.now()+"_"+Math.floor(Math.random()*99999),done=false,script=document.createElement("script");
+   var q=Object.assign({action:action,key:cfg.apiKey||"",callback:cb},params||{});
+   window[cb]=function(data){if(done)return;done=true;cleanup();data&&data.ok!==false?resolve(data):reject(new Error((data&&data.error)||"Error de API"))};
+   function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
+   script.onerror=function(){if(!done){done=true;cleanup();reject(new Error("Sin conexión con GAS"))}};
+   script.src=cfg.gasUrl+(cfg.gasUrl.indexOf("?")>-1?"&":"?")+Object.keys(q).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(q[k]==null?"":q[k])}).join("&");
+   document.head.appendChild(script);
+   var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error("Tiempo de espera agotado"))}},12000);
+ });
+}
+function renderRackStrip(){
+ var h="";for(var i=65;i<=90;i++){var r=String.fromCharCode(i);h+='<button class="rack-chip '+(r===state.rack?"active":"")+'" data-rack="'+r+'">'+r+"</button>"}$("#rackStrip").innerHTML=h;
+ $$("#rackStrip [data-rack]").forEach(function(b){b.onclick=function(){state.rack=b.dataset.rack;state.position=1;state.level=1;saveState();renderRackStrip();updateLocation();loadRack()}})
+}
+function renderOverview(){
+ var h="";for(var i=65;i<=90;i++){var r=String.fromCharCode(i),c=rackCfg(r),ready=c.positions&&c.levels;h+='<button class="rack-card '+(ready?"ready":"")+'" data-r="'+r+'"><b>'+r+'</b><small>'+(ready?(c.positions+" posiciones · "+c.levels+" niveles"):"Pendiente")+"</small></button>"}$("#overview").innerHTML=h;
+ $$("#overview [data-r]").forEach(function(b){b.onclick=function(){state.rack=b.dataset.r;state.position=1;state.level=1;saveState();showView("capture");renderRackStrip();updateLocation();loadRack()}})
+}
+function clamp(){
+ var c=rackCfg(state.rack);if(c.positions)state.position=Math.min(Math.max(1,state.position),c.positions);else state.position=Math.max(1,state.position);
+ if(c.levels)state.level=Math.min(Math.max(1,state.level),c.levels);else state.level=Math.max(1,state.level);
+ saveState();updateLocation()
+}
+function updateLocation(){$("#pos").value=state.position;$("#level").value=state.level;$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level;$("#rackTitle").textContent="Rack "+state.rack}
+function step(dir){
+ var c=rackCfg(state.rack),pmax=c.positions||Math.max(6,state.position),nmax=c.levels||Math.max(3,state.level);
+ if(dir>0){state.level++;if(state.level>nmax){state.level=1;state.position++;if(state.position>pmax)state.position=1}}
+ else{state.level--;if(state.level<1){state.position--;if(state.position<1)state.position=pmax;state.level=nmax}}clamp()
+}
+function renderRackMap(records){
+ var c=rackCfg(state.rack);if(!c.positions||!c.levels){$("#rackMap").innerHTML='<div class="empty">Configura posiciones y niveles de este rack.</div>';return}
+ var used={};(records||[]).forEach(function(x){used[x.position+"-"+x.level]=(used[x.position+"-"+x.level]||0)+1});
+ var h='<div class="rack-table" style="--cols:'+c.positions+'"><div class="rack-row"><div></div>';
+ for(var p=1;p<=c.positions;p++)h+='<div class="rack-cell"><b>P'+p+"</b></div>";h+="</div>";
+ for(var n=c.levels;n>=1;n--){h+='<div class="rack-row"><div class="rack-cell level">N'+n+"</div>";for(var pp=1;pp<=c.positions;pp++){var count=used[pp+"-"+n]||0;h+='<div class="rack-cell '+(count?"used":"")+'"><b>'+(count?count:"·")+'</b><span>'+(count?"códigos":"libre")+"</span></div>"}h+="</div>"}h+="</div>";$("#rackMap").innerHTML=h
+}
+function renderRecent(){
+ var list=state.recent.slice(0,12);if(!list.length){$("#recent").innerHTML='<div class="empty">Sin registros todavía.</div>';return}
+ $("#recent").innerHTML=list.map(function(x){return '<div class="item"><div class="loc">'+x.rack+"<br><small>P"+x.position+" N"+x.level+'</small></div><div><strong>'+esc(x.code)+'</strong><small>'+esc(x.description||x.notes||"Sin descripción")+'</small></div><time>'+esc(x.timeLabel||"")+"</time></div>"}).join("")
+}
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
+function loadRack(){
+ renderRackMap([]);if(!cfg.gasUrl)return;
+ api("rack",{rack:state.rack}).then(function(d){state.records=d.records||[];if(d.rack){state.racks[state.rack]=d.rack;renderOverview();clamp()}renderRackMap(state.records)}).catch(function(e){toast(e.message)})
+}
+function bootstrap(){
+ renderRackStrip();renderOverview();updateLocation();renderRecent();
+ if(!cfg.gasUrl){updateStatus(false,"Configura GAS");$("#settingsDialog").showModal();return}
+ api("bootstrap").then(function(d){(d.racks||[]).forEach(function(r){state.racks[r.rack]=r});state.recent=d.recent||state.recent;renderOverview();renderRecent();updateStatus(true,state.pending.length?state.pending.length+" pendiente(s)":"Conectado");clamp();loadRack();syncPending()}).catch(function(){updateStatus(false,"Sin conexión")})
+}
+function localRecord(p){return{id:"local-"+Date.now(),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
+function saveMapping(){
+ var code=$("#code").value.trim().toUpperCase();if(!code)return toast("Escribe o escanea un código");
+ var p={rack:state.rack,position:state.position,level:state.level,code:code,description:$("#desc").value.trim(),notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
+ loading(true);
+ api("saveMapping",p).then(function(d){var rec=localRecord(p);rec.id=d.id||rec.id;rec.timeLabel="ahora";state.recent.unshift(rec);state.records.push(rec);saveState();renderRecent();renderRackMap(state.records);$("#code").value="";$("#desc").value="";$("#notes").value="";$("#code").focus();toast(d.duplicate?"Ya estaba mapeado aquí":"Guardado")}).catch(function(){state.pending.push(p);var rec=localRecord(p);state.recent.unshift(rec);state.records.push(rec);saveState();renderRecent();renderRackMap(state.records);updateStatus(false,state.pending.length+" pendiente(s)");$("#code").value="";$("#desc").value="";$("#notes").value="";$("#code").focus();toast("Sin conexión: guardado en cola")}).finally(function(){loading(false)})
+}
+function syncPending(){
+ if(!state.pending.length||!cfg.gasUrl)return;var queue=state.pending.slice(),ok=0;
+ function one(){if(!queue.length){state.pending=[];saveState();updateStatus(true,"Conectado");if(ok)toast(ok+" registro(s) sincronizados");bootstrapRecent();return}
+ var p=queue.shift();api("saveMapping",p).then(function(){ok++;state.pending.shift();saveState();one()}).catch(function(){updateStatus(false,state.pending.length+" pendiente(s)")})}one()
+}
+function bootstrapRecent(){api("recent").then(function(d){state.recent=d.recent||state.recent;renderRecent()}).catch(function(){})}
+function search(){
+ var q=$("#searchInput").value.trim();if(!q)return;
+ if(!cfg.gasUrl){var local=state.recent.filter(function(x){return x.code.toUpperCase().indexOf(q.toUpperCase())>-1||(x.description||"").toUpperCase().indexOf(q.toUpperCase())>-1});return renderSearch(local)}
+ loading(true);api("search",{q:q}).then(function(d){renderSearch(d.results||[])}).catch(function(e){toast(e.message)}).finally(function(){loading(false)})
+}
+function renderSearch(a){if(!a.length){$("#searchResults").innerHTML='<div class="empty">No encontré ubicaciones activas.</div>';return}$("#searchResults").innerHTML=a.map(function(x){return '<div class="result"><strong>'+esc(x.code)+'</strong><div class="muted">'+esc(x.description||"Sin descripción")+'</div><div class="where"><span class="pill">Rack '+esc(x.rack)+'</span><span class="pill">Posición '+x.position+'</span><span class="pill">Nivel '+x.level+'</span></div>'+(x.notes?'<div class="muted" style="margin-top:8px">'+esc(x.notes)+"</div>":"")+"</div>"}).join("")}
+function openRack(){
+ var c=rackCfg(state.rack);$("#rackDialogTitle").textContent="Rack "+state.rack;$("#rackPositions").value=c.positions||6;$("#rackLevels").value=c.levels||3;$("#rackNotes").value=c.notes||"";$("#rackDialog").showModal()
+}
+function saveRack(){
+ var p={rack:state.rack,positions:Number($("#rackPositions").value),levels:Number($("#rackLevels").value),notes:$("#rackNotes").value.trim()};state.racks[state.rack]=p;renderOverview();clamp();renderRackMap(state.records);
+ if(cfg.gasUrl)api("updateRack",p).then(function(){toast("Rack actualizado")}).catch(function(){localStorage.setItem("rackCfgPending_"+state.rack,JSON.stringify(p));toast("Rack guardado localmente")})
+}
+function openSettings(){$("#gasUrl").value=cfg.gasUrl||"";$("#apiKey").value=cfg.apiKey||"";$("#userName").value=cfg.user||"";$("#settingsDialog").showModal()}
+function saveSettings(){cfg={gasUrl:$("#gasUrl").value.trim().replace(/\/$/,""),apiKey:$("#apiKey").value.trim(),user:$("#userName").value.trim()||"Celular"};localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));setTimeout(bootstrap,100)}
+function testConnection(){var old=cfg;cfg={gasUrl:$("#gasUrl").value.trim().replace(/\/$/,""),apiKey:$("#apiKey").value.trim(),user:$("#userName").value.trim()};api("ping").then(function(){toast("Conexión correcta")}).catch(function(e){toast(e.message)}).finally(function(){cfg=old})}
+function showView(id){$$(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});$$(".nav").forEach(function(b){b.classList.toggle("active",b.dataset.view===id)});if(id==="racks")renderOverview()}
+async function scan(){
+ if(!("BarcodeDetector" in window)||!navigator.mediaDevices){return toast("Este navegador no soporta escaneo directo")}
+ try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim().toUpperCase();stopScan();toast("Código leído");$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
+}
+function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").onchange=function(){state.position=Number(this.value)||1;clamp()};$("#level").onchange=function(){state.level=Number(this.value)||1;clamp()};$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#saveSettings").onclick=saveSettings;$("#test").onclick=testConnection;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
+bootstrap();
+})();
+</script>
+</body>
+</html>
