@@ -71,3 +71,12 @@ La app guarda registros pendientes localmente si se pierde la conexión y permit
 ## Seguridad
 
 El repositorio `maps` es público. Por esa razón la clave `MAPEO_API_KEY` **no se incluye en el código ni en Google Sheets**. La URL de GAS sí está preconfigurada porque no es un secreto. La clave permanece en Script Properties de Apps Script y, después de introducirla, en `localStorage` del celular.
+
+
+## Enlace de activación del celular
+
+La app admite una activación de una sola vez mediante el fragmento local `#k=...`.
+Ese valor se guarda en `localStorage` del navegador y el fragmento se elimina de la barra de direcciones inmediatamente.
+Así la API key no queda publicada en el repositorio ni en Google Sheets.
+
+Después de la activación, la app se conecta automáticamente y no vuelve a pedir la clave en ese navegador.
