@@ -141,7 +141,7 @@ function bootstrap(){
  initCatalog();renderRackStrip();renderOverview();updateLocation();renderRecent();
  if(!cfg.gasUrl){cfg.gasUrl=DEFAULT_GAS_URL;localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg))}
  if(!cfg.apiKey){updateStatus(false,"Falta clave");$("#testStatus").textContent="La URL ya está configurada. Falta guardar la clave de captura en este celular.";$("#settingsDialog").showModal();return}
- api("bootstrap").then(function(d){(d.racks||[]).forEach(function(r){state.racks[r.rack]=r});state.recent=d.recent||state.recent;renderOverview();renderRecent();updateStatus(true,state.pending.length?state.pending.length+" pendiente(s)":"Conectado");clamp();loadRack();syncPending()}).catch(function(e){var m=friendlyConnectionError(e&&e.message);updateStatus(false,m);$("#status").title=(e&&e.message)||m})
+ api("bootstrap").then(function(d){(d.racks||[]).forEach(function(r){state.racks[r.rack]=r});(d.catalog||[]).forEach(function(m){if(m&&m.code)MATERIAL_CATALOG[String(m.code).toUpperCase()]=m.description||""});initCatalog();state.recent=d.recent||state.recent;renderOverview();renderRecent();updateStatus(true,state.pending.length?state.pending.length+" pendiente(s)":"Conectado");clamp();loadRack();syncPending()}).catch(function(e){var m=friendlyConnectionError(e&&e.message);updateStatus(false,m);$("#status").title=(e&&e.message)||m})
 }
 function localRecord(p){return{id:"local-"+Date.now(),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
 function saveMapping(){
