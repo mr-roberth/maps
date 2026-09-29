@@ -21,7 +21,7 @@ function doGet(e) {
     authorize_(p.key);
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '1.0.0', time: new Date().toISOString() };
+    if (action === 'ping') data = { ok: true, version: '1.1.0', time: new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
@@ -63,7 +63,7 @@ function authorize_(key) {
 function ensureStructure_() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const defs = [
-    ['MAPEO', ['ID','FechaHora','Rack','Posicion','Nivel','CodigoMaterial','Descripcion','Observaciones','Usuario','Estado']],
+    ['MAPEO', ['ID','FechaHora','Rack','Posicion','Nivel','CodigoMaterial','Descripcion','CantidadPiezas','Observaciones','Usuario','Estado']],
     ['RACKS', ['Rack','Posiciones','Niveles','Activo','Notas','UltimaActualizacion']],
     ['CATALOGO', ['CodigoMaterial','Descripcion','Categoria','Unidad','Activo']],
     ['CONFIG', ['Clave','Valor','Descripcion','Editable']]
@@ -72,7 +72,7 @@ function ensureStructure_() {
     let sh = ss.getSheetByName(d[0]);
     if (!sh) sh = ss.insertSheet(d[0]);
     const current = sh.getRange(1,1,1,d[1].length).getValues()[0];
-    if (!current[0]) sh.getRange(1,1,1,d[1].length).setValues([d[1]]);
+    if (!current[0]) sh.getRange(1,1,1,d[1].length).setValues([d[1]]); else if (d[0] === 'MAPEO' && current.indexOf('CantidadPiezas') < 0) { sh.insertColumnAfter(7); sh.getRange(1,8).setValue('CantidadPiezas'); }
   });
   const racks = ss.getSheetByName('RACKS');
   if (racks.getLastRow() < 27) {
@@ -105,14 +105,14 @@ function racks_() {
 function activeMappings_() {
   const sh = sheet_(SHEETS.MAPEO), last = sh.getLastRow();
   if (last < 2) return [];
-  return sh.getRange(2,1,last-1,10).getValues().filter(function(r){
-    return upper_(r[9] || 'ACTIVO') !== 'ELIMINADO' && r[5];
+  return sh.getRange(2,1,last-1,11).getValues().filter(function(r){
+    return upper_(r[10] || 'ACTIVO') !== 'ELIMINADO' && r[5];
   }).map(mapRow_);
 }
 
 function mapRow_(r) {
   const d = r[1] instanceof Date ? Utilities.formatDate(r[1], tz_(), 'yyyy-MM-dd HH:mm') : clean_(r[1]);
-  return { id:clean_(r[0]), date:d, timeLabel:d ? d.slice(5,16) : '', rack:upper_(r[2]), position:Number(r[3])||0, level:Number(r[4])||0, code:upper_(r[5]), description:clean_(r[6]), notes:clean_(r[7]), user:clean_(r[8]), status:upper_(r[9]||'ACTIVO') };
+  return { id:clean_(r[0]), date:d, timeLabel:d ? d.slice(5,16) : '', rack:upper_(r[2]), position:Number(r[3])||0, level:Number(r[4])||0, code:upper_(r[5]), description:clean_(r[6]), quantity:Number(r[7])||0, notes:clean_(r[8]), user:clean_(r[9]), status:upper_(r[10]||'ACTIVO') };
 }
 
 function rack_(rack) {
@@ -146,19 +146,20 @@ function saveMapping_(b) {
 
   const sh = sheet_(SHEETS.MAPEO), last = sh.getLastRow();
   if (last >= 2) {
-    const vals = sh.getRange(2,3,last-1,8).getValues();
+    const vals = sh.getRange(2,3,last-1,9).getValues();
     const dup = vals.some(function(r){
-      return upper_(r[0])===rack && Number(r[1])===position && Number(r[2])===level && upper_(r[3])===code && upper_(r[7]||'ACTIVO')!=='ELIMINADO';
+      return upper_(r[0])===rack && Number(r[1])===position && Number(r[2])===level && upper_(r[3])===code && upper_(r[8]||'ACTIVO')!=='ELIMINADO';
     });
     if (dup) return { ok:true, duplicate:true, message:'Ese código ya está mapeado en la misma ubicación' };
   }
 
+  const quantity = Math.max(0, Number(b.quantity)||0);
   let description = clean_(b.description);
   if (!description) description = catalogDescription_(code);
   const id = Utilities.getUuid();
-  sh.appendRow([id,new Date(),rack,position,level,code,description,clean_(b.notes),clean_(b.user),'ACTIVO']);
+  sh.appendRow([id,new Date(),rack,position,level,code,description,quantity,clean_(b.notes),clean_(b.user),'ACTIVO']);
   if (description) upsertCatalog_(code,description);
-  return { ok:true, id:id, rack:rack, position:position, level:level, code:code };
+  return { ok:true, id:id, rack:rack, position:position, level:level, code:code, quantity:quantity };
 }
 
 function updateRack_(b) {
@@ -180,7 +181,7 @@ function deleteMapping_(b) {
   const ids = sh.getRange(2,1,last-1,1).getValues().flat().map(String);
   const i = ids.indexOf(id);
   if (i < 0) throw new Error('Registro no encontrado');
-  sh.getRange(i+2,10).setValue('ELIMINADO');
+  sh.getRange(i+2,11).setValue('ELIMINADO');
   return { ok:true, id:id };
 }
 
