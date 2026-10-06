@@ -168,18 +168,33 @@ function bootstrap(){
  if(!cfg.apiKey){updateStatus(false,"Falta clave");$("#testStatus").textContent="La URL ya está configurada. Falta guardar la clave de captura en este celular.";$("#settingsDialog").showModal();return}
  api("bootstrap").then(function(d){(d.racks||[]).forEach(function(r){state.racks[r.rack]=r});(d.catalog||[]).forEach(function(m){if(m&&m.code)MATERIAL_CATALOG[String(m.code).toUpperCase()]=m.description||""});initCatalog();state.recent=d.recent||state.recent;renderOverview();renderRecent();updateStatus(true,state.pending.length?state.pending.length+" pendiente(s)":"Conectado");clamp();loadRack();syncPending()}).catch(function(e){var m=friendlyConnectionError(e&&e.message);updateStatus(false,m);$("#status").title=(e&&e.message)||m})
 }
-function localRecord(p){return{id:"local-"+Date.now(),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",quantity:Number(p.quantity)||0,notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
+function localRecord(p){return{id:p.clientId||("local-"+Date.now()),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",quantity:Number(p.quantity)||0,notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
+function newClientId(){return "dev-"+Date.now()+"-"+Math.random().toString(36).slice(2,10)}
+function clearCapture(){ $("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";$("#code").focus() }
 function saveMapping(){
  if(!ensureOperator())return;
  var code=$("#code").value.trim().toUpperCase();if(!code)return toast("Escribe o escanea un código");
- var qty=Number($("#qty").value);if(!Number.isFinite(qty)||qty<0)return toast("Captura la cantidad en piezas");var p={rack:state.rack,position:state.position,level:state.level,code:code,description:$("#desc").value.trim(),quantity:qty,notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
+ var qty=Number($("#qty").value);if(!Number.isFinite(qty)||qty<0)return toast("Captura la cantidad en piezas");
+ var p={clientId:newClientId(),rack:state.rack,position:state.position,level:state.level,code:code,description:$("#desc").value.trim(),quantity:qty,notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
+ var rec=localRecord(p);state.recent.unshift(rec);state.records.push(rec);state.inventory.unshift(rec);
+ if(!navigator.onLine){state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · se sincronizará");return}
  loading(true);
- api("saveMapping",p).then(function(d){var rec=localRecord(p);rec.id=d.id||rec.id;rec.timeLabel="ahora";state.recent.unshift(rec);state.records.push(rec);state.inventory.unshift(rec);saveState();renderRecent();renderRackMap(state.records);renderInventory();$("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";$("#code").focus();toast(d.duplicate?"Conteo actualizado / código ya ubicado":"Guardado: "+qty+" pzas")}).catch(function(){state.pending.push(p);var rec=localRecord(p);state.recent.unshift(rec);state.records.push(rec);state.inventory.unshift(rec);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");$("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";$("#code").focus();toast("Sin conexión: "+qty+" pzas guardadas en cola")}).finally(function(){loading(false)})
+ api("saveMapping",p).then(function(d){
+   rec.id=d.id||rec.id;rec.timeLabel="ahora";saveState();renderRecent();renderRackMap(state.records);renderInventory();clearCapture();
+   toast(d.duplicate?"Ya estaba registrado en esta ubicación":"Guardado: "+qty+" pzas");
+ }).catch(function(){
+   state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · pendiente de sincronizar");
+ }).finally(function(){loading(false)})
 }
 function syncPending(){
- if(!state.pending.length||!cfg.gasUrl)return;var queue=state.pending.slice(),ok=0;
- function one(){if(!queue.length){state.pending=[];saveState();updateStatus(true,"Conectado");if(ok)toast(ok+" registro(s) sincronizados");bootstrapRecent();return}
- var p=queue.shift();api("saveMapping",p).then(function(){ok++;state.pending.shift();saveState();one()}).catch(function(){updateStatus(false,state.pending.length+" pendiente(s)")})}one()
+ if(!state.pending.length||!cfg.gasUrl||!navigator.onLine)return;
+ var ok=0;updateStatus(false,"Sincronizando "+state.pending.length+"…");
+ function one(){
+   if(!state.pending.length){saveState();updateStatus(true,"Conectado");if(ok)toast(ok+" registro(s) sincronizados");bootstrapRecent();return}
+   var p=state.pending[0];
+   api("saveMapping",p).then(function(){state.pending.shift();ok++;saveState();one()}).catch(function(){saveState();updateStatus(false,state.pending.length+" pendiente(s)")})
+ }
+ one()
 }
 function bootstrapRecent(){api("recent").then(function(d){state.recent=d.recent||state.recent;renderRecent()}).catch(function(){})}
 function search(){
@@ -211,7 +226,7 @@ async function scan(){
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim().toUpperCase();applyCatalogCode();stopScan();toast("Código leído");$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",applyCatalogCode);$("#code").addEventListener("change",applyCatalogCode);$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").onchange=function(){state.position=Number(this.value)||1;clamp()};$("#level").onchange=function(){state.level=Number(this.value)||1;clamp()};$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#saveSettings").onclick=saveSettings;$("#test").onclick=testConnection;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",applyCatalogCode);$("#code").addEventListener("change",applyCatalogCode);$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").onchange=function(){state.position=Number(this.value)||1;clamp()};$("#level").onchange=function(){state.level=Number(this.value)||1;clamp()};$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#saveSettings").onclick=saveSettings;$("#test").onclick=testConnection;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
