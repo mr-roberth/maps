@@ -68,6 +68,8 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 
 <dialog id="rackDialog"><form method="dialog" class="sheet" id="rackForm"><div class="dialog-head"><div><p class="eyebrow">CONFIGURACIÓN FÍSICA</p><h2 id="rackDialogTitle">Rack A</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">Registra lo que observes; puedes corregirlo después.</p><div class="grid2"><label>Posiciones<input id="rackPositions" type="number" min="1" max="50" inputmode="numeric" value="6"></label><label>Niveles<input id="rackLevels" type="number" min="1" max="10" inputmode="numeric" value="3"></label></div><label>Notas<textarea id="rackNotes" rows="3" placeholder="Ej. nivel 4 solo de P1 a P4…"></textarea></label><div class="dialog-actions"><button value="cancel" class="btn secondary">Cancelar</button><button id="rackSave" value="default" class="btn primary">Guardar rack</button></div></form></dialog>
 
+<dialog id="operatorDialog"><form method="dialog" class="sheet" id="operatorForm"><div class="dialog-head"><div><p class="eyebrow">IDENTIFICACIÓN</p><h2>¿Quién realizará la captura?</h2></div></div><p class="muted">Este nombre se guardará únicamente en este dispositivo y se usará como responsable de los registros. En otro celular, tablet o navegador se solicitará nuevamente.</p><label>Nombre del responsable<input id="operatorName" type="text" required autocomplete="name" placeholder="Ej. Roberto Hernández"></label><button class="btn primary big wide" type="submit">Continuar</button></form></dialog>
+
 <dialog id="scannerDialog"><div class="scanner"><div class="dialog-head"><div><p class="eyebrow" style="color:#9ddf7a">CÁMARA</p><h2>Escanear código</h2></div><button id="closeScanner" class="icon">×</button></div><video id="video" autoplay muted playsinline></video><div class="scanline"></div><p>Apunta al código de barras.</p></div></dialog>
 
 <script>
@@ -83,6 +85,26 @@ consumeSetupFragment();
 if(!cfg.gasUrl){cfg.gasUrl=DEFAULT_GAS_URL;localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));}
 var state={rack:localStorage.getItem("rack")||"A",position:Number(localStorage.getItem("pos")||1),level:Number(localStorage.getItem("level")||1),racks:{},records:[],recent:JSON.parse(localStorage.getItem("rackRecent")||"[]"),pending:JSON.parse(localStorage.getItem("rackPending")||"[]"),inventory:JSON.parse(localStorage.getItem("rackInventory")||"[]")};
 var scanStream=null,scanTimer=null;
+var PROD_RESET_VERSION="2026-10-06-empaque-v1";
+function applyProductionReset(){
+ if(localStorage.getItem("oleolabProdReset")===PROD_RESET_VERSION)return;
+ state.records=[];state.recent=[];state.pending=[];state.inventory=[];
+ ["rackRecent","rackPending","rackInventory"].forEach(function(k){localStorage.removeItem(k)});
+ localStorage.setItem("oleolabProdReset",PROD_RESET_VERSION);
+}
+function ensureOperator(){
+ if((cfg.user||"").trim())return true;
+ var d=$("#operatorDialog");if(d&&!d.open)d.showModal();
+ setTimeout(function(){var x=$("#operatorName");if(x)x.focus()},80);
+ return false;
+}
+function saveOperator(e){
+ e.preventDefault();
+ var name=($("#operatorName").value||"").trim();
+ if(!name)return toast("Captura el nombre del responsable");
+ cfg.user=name;localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));
+ $("#operatorDialog").close();toast("Responsable: "+name);bootstrap();
+}
 function initCatalog(){var d=$("#materialCodes");if(d){d.innerHTML=Object.keys(MATERIAL_CATALOG).map(function(k){return '<option value="'+esc(k)+'">'+esc(MATERIAL_CATALOG[k])+'</option>'}).join("")}}
 function applyCatalogCode(){var el=$("#code"),desc=$("#desc"),k=(el.value||"").trim().toUpperCase();el.value=k;var hit=MATERIAL_CATALOG[k];if(hit){desc.value=hit;desc.dataset.catalogFilled="1"}else if(desc.dataset.catalogFilled==="1"){desc.value="";delete desc.dataset.catalogFilled}}
 function probePublicGas(){return new Promise(function(resolve,reject){if(!cfg.gasUrl)return reject(new Error("Falta URL de GAS"));var cb="probe_"+Date.now()+"_"+Math.floor(Math.random()*99999),done=false,script=document.createElement("script");window[cb]=function(data){if(done)return;done=true;cleanup();resolve(data||{})};function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}script.onerror=function(){if(!done){done=true;cleanup();reject(new Error("Sin respuesta pública de GAS"))}};script.src=cfg.gasUrl+(cfg.gasUrl.indexOf("?")>-1?"&":"?")+"action=ping&callback="+encodeURIComponent(cb);document.head.appendChild(script);var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error("Tiempo de espera agotado"))}},9000)})}
@@ -148,6 +170,7 @@ function bootstrap(){
 }
 function localRecord(p){return{id:"local-"+Date.now(),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",quantity:Number(p.quantity)||0,notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
 function saveMapping(){
+ if(!ensureOperator())return;
  var code=$("#code").value.trim().toUpperCase();if(!code)return toast("Escribe o escanea un código");
  var qty=Number($("#qty").value);if(!Number.isFinite(qty)||qty<0)return toast("Captura la cantidad en piezas");var p={rack:state.rack,position:state.position,level:state.level,code:code,description:$("#desc").value.trim(),quantity:qty,notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
  loading(true);
@@ -188,8 +211,9 @@ async function scan(){
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim().toUpperCase();applyCatalogCode();stopScan();toast("Código leído");$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",applyCatalogCode);$("#code").addEventListener("change",applyCatalogCode);$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").onchange=function(){state.position=Number(this.value)||1;clamp()};$("#level").onchange=function(){state.level=Number(this.value)||1;clamp()};$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#saveSettings").onclick=saveSettings;$("#test").onclick=testConnection;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
-bootstrap();
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",applyCatalogCode);$("#code").addEventListener("change",applyCatalogCode);$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").onchange=function(){state.position=Number(this.value)||1;clamp()};$("#level").onchange=function(){state.level=Number(this.value)||1;clamp()};$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#saveSettings").onclick=saveSettings;$("#test").onclick=testConnection;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
+applyProductionReset();
+if(ensureOperator())bootstrap();
 })();
 </script>
 </body>
