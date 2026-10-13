@@ -13,7 +13,7 @@ function doGet(e) {
   try {
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '2.1.0', time: new Date().toISOString() };
+    if (action === 'ping') data = { ok: true, version: '2.2.0', time: new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
@@ -82,10 +82,18 @@ function jsonp_(callback,obj){ return ContentService.createTextOutput(callback +
 
 function racks_() {
   const sh = sheet_(SHEETS.RACKS), last = sh.getLastRow();
-  if (last < 2) return [];
-  return sh.getRange(2,1,last-1,6).getValues().filter(function(r){return r[0]}).map(function(r){
-    return { rack: upper_(r[0]), positions: Number(r[1])||0, levels: Number(r[2])||0, active: r[3] !== false, notes: clean_(r[4]), updated: r[5] || '' };
+  const base = last < 2 ? [] : sh.getRange(2,1,last-1,6).getValues().filter(function(r){return r[0]}).map(function(r){
+    return { rack: upper_(r[0]), positions: Number(r[1])||0, levels: Number(r[2])||0, active: r[3] !== false, notes: clean_(r[4]), updated: r[5] || '', mappedCount:0 };
   });
+  const byRack = {};
+  base.forEach(function(x){ byRack[x.rack]=x; });
+  activeMappings_().forEach(function(m){
+    if (!byRack[m.rack]) byRack[m.rack]={rack:m.rack,positions:0,levels:0,active:true,notes:'',updated:'',mappedCount:0};
+    byRack[m.rack].positions=Math.max(byRack[m.rack].positions,Number(m.position)||0);
+    byRack[m.rack].levels=Math.max(byRack[m.rack].levels,Number(m.level)||0);
+    byRack[m.rack].mappedCount++;
+  });
+  return Object.keys(byRack).sort().map(function(k){return byRack[k]});
 }
 
 function activeMappings_() {
@@ -145,7 +153,22 @@ function saveMapping_(b) {
   const id = Utilities.getUuid();
   sh.appendRow([id,new Date(),rack,position,level,code,description,quantity,clean_(b.notes),clean_(b.user),'ACTIVO']);
   if (description) upsertCatalog_(code,description);
+  touchRackFromMapping_(rack,position,level);
   return { ok:true, id:id, rack:rack, position:position, level:level, code:code, quantity:quantity };
+}
+
+function touchRackFromMapping_(rack, position, level) {
+  const sh = sheet_(SHEETS.RACKS), last = Math.max(2,sh.getLastRow());
+  const vals = sh.getRange(2,1,last-1,6).getValues();
+  const idx = vals.findIndex(function(r){return upper_(r[0])===rack});
+  if (idx >= 0) {
+    const row = vals[idx];
+    const nextPos = Math.max(Number(row[1])||0, Number(position)||0);
+    const nextLev = Math.max(Number(row[2])||0, Number(level)||0);
+    sh.getRange(idx+2,2,1,5).setValues([[nextPos,nextLev,true,clean_(row[4])||'Detectado automáticamente desde MAPEO',new Date()]]);
+  } else {
+    sh.appendRow([rack,Number(position)||1,Number(level)||1,true,'Detectado automáticamente desde MAPEO',new Date()]);
+  }
 }
 
 function updateRack_(b) {
