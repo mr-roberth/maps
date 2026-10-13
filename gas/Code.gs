@@ -13,13 +13,13 @@ function doGet(e) {
   try {
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '2.0.0', time: new Date().toISOString() };
+    if (action === 'ping') data = { ok: true, version: '2.1.0', time: new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
     else if (action === 'recent') data = { ok: true, recent: recent_(20) };
     else if (action === 'catalog') data = { ok: true, catalog: catalog_() };
-    else if (action === 'lookupMaterial') data = { ok: true, material: lookupMaterial_(upper_(p.code)) };
+    else if (action === 'lookupMaterial') data = { ok: true, material: lookupMaterial_(p.code || p.q || p.description || '') };
     else if (action === 'saveMapping') data = saveMapping_(p);
     else if (action === 'updateRack') data = updateRack_(p);
     else if (action === 'deleteMapping') data = deleteMapping_(p);
@@ -177,9 +177,25 @@ function catalog_() {
   return sh.getRange(2,1,last-1,5).getValues().filter(function(r){return r[0] && r[4]!==false}).map(function(r){return {code:upper_(r[0]),description:clean_(r[1]),category:clean_(r[2]),unit:clean_(r[3])}});
 }
 
-function lookupMaterial_(code) {
-  const r = catalog_().find(function(x){return x.code===code});
-  return r || null;
+function normalizeMaterial_(v) {
+  return clean_(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[´’‘`]/g,"'").replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function lookupMaterial_(query) {
+  const q = clean_(query);
+  if (!q) return null;
+  const rows = catalog_();
+  const code = upper_(q);
+  let r = rows.find(function(x){ return x.code === code; });
+  if (r) return r;
+  const n = normalizeMaterial_(q);
+  r = rows.find(function(x){ return normalizeMaterial_(x.description) === n; });
+  if (r) return r;
+  const partial = rows.filter(function(x){
+    const d = normalizeMaterial_(x.description);
+    return n.length >= 8 && d && (d.indexOf(n) > -1 || n.indexOf(d) > -1);
+  });
+  return partial.length === 1 ? partial[0] : null;
 }
 
 function catalogDescription_(code) {
