@@ -3,25 +3,17 @@ const SHEETS = { MAPEO: 'MAPEO', RACKS: 'RACKS', CATALOGO: 'CATALOGO', CONFIG: '
 
 function setup() {
   ensureStructure_();
-  const props = PropertiesService.getScriptProperties();
-  let key = props.getProperty('MAPEO_API_KEY');
-  if (!key) {
-    key = Utilities.getUuid().replace(/-/g, '');
-    props.setProperty('MAPEO_API_KEY', key);
-  }
-  console.log('MAPEO_API_KEY=' + key);
   console.log('SPREADSHEET_ID=' + SPREADSHEET_ID);
-  return { ok: true, apiKey: key, spreadsheetId: SPREADSHEET_ID };
+  return { ok: true, spreadsheetId: SPREADSHEET_ID, authMode: 'public-webapp' };
 }
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
   const callback = sanitizeCallback_(p.callback || 'callback');
   try {
-    authorize_(p.key);
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '1.1.0', time: new Date().toISOString() };
+    if (action === 'ping') data = { ok: true, version: '2.0.0', time: new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
@@ -41,7 +33,6 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    authorize_(body.key);
     const action = String(body.action || '');
     let data;
     if (action === 'saveMapping') data = saveMapping_(body);
@@ -54,11 +45,6 @@ function doPost(e) {
   }
 }
 
-function authorize_(key) {
-  const expected = PropertiesService.getScriptProperties().getProperty('MAPEO_API_KEY');
-  if (!expected) throw new Error('Primero ejecuta setup() una vez en Apps Script');
-  if (!key || String(key) !== String(expected)) throw new Error('Clave de captura incorrecta');
-}
 
 function ensureStructure_() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
