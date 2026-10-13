@@ -193,7 +193,7 @@ function renderRackStrip(){
  $$("#rackStrip [data-rack]").forEach(function(b){b.onclick=function(){state.rack=b.dataset.rack;state.position=1;state.level=1;saveState();renderRackStrip();updateLocation();loadRack()}})
 }
 function renderOverview(){
- var h="";for(var i=65;i<=90;i++){var r=String.fromCharCode(i),c=rackCfg(r),ready=c.positions&&c.levels;h+='<button class="rack-card '+(ready?"ready":"")+'" data-r="'+r+'"><b>'+r+'</b><small>'+(ready?(c.positions+" posiciones · "+c.levels+" niveles"):"Pendiente")+"</small></button>"}$("#overview").innerHTML=h;
+ var h="";for(var i=65;i<=90;i++){var r=String.fromCharCode(i),c=rackCfg(r),ready=c.positions&&c.levels,label=ready?(c.positions+" posiciones · "+c.levels+" niveles"+(c.mappedCount?(" · "+c.mappedCount+" registros"):"")):"Pendiente";h+='<button class="rack-card '+(ready?"ready":"")+'" data-r="'+r+'"><b>'+r+'</b><small>'+label+"</small></button>"}$("#overview").innerHTML=h;
  $$("#overview [data-r]").forEach(function(b){b.onclick=function(){state.rack=b.dataset.r;state.position=1;state.level=1;saveState();showView("capture");renderRackStrip();updateLocation();loadRack()}})
 }
 function clamp(){
@@ -221,7 +221,16 @@ function renderRecent(){
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
 function loadRack(){
  renderRackMap([]);if(!cfg.gasUrl)return;
- api("rack",{rack:state.rack}).then(function(d){state.records=d.records||[];if(d.rack){state.racks[state.rack]=d.rack;renderOverview();clamp()}renderRackMap(state.records)}).catch(function(e){toast(e.message)})
+ api("rack",{rack:state.rack}).then(function(d){
+   state.records=d.records||[];
+   var rc=d.rack||{rack:state.rack,positions:0,levels:0,notes:""},maxP=0,maxL=0;
+   state.records.forEach(function(x){maxP=Math.max(maxP,Number(x.position)||0);maxL=Math.max(maxL,Number(x.level)||0)});
+   rc.positions=Math.max(Number(rc.positions)||0,maxP);
+   rc.levels=Math.max(Number(rc.levels)||0,maxL);
+   rc.mappedCount=state.records.length;
+   state.racks[state.rack]=rc;
+   renderOverview();clamp();renderRackMap(state.records)
+ }).catch(function(e){toast(e.message)})
 }
 function bootstrap(){
  initCatalog();renderRackStrip();renderOverview();updateLocation();renderRecent();renderInventory();
