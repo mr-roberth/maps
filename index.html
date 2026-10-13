@@ -50,7 +50,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
     <div class="walk"><button id="prev" class="btn ghost">← Anterior</button><button id="next" class="btn primary">Siguiente →</button></div>
   </div>
   <form id="mapForm" class="card">
-    <div class="code-row"><label>Código o descripción<input id="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" list="materialCodes" placeholder="Escanea CME o descripción"><datalist id="materialCodes"></datalist><small class="muted" style="display:block;margin-top:6px">Puedes escribir o escanear el CME o la descripción. Si coincide con el catálogo, se convertirá al CME correcto.</small></label><button id="scan" type="button" class="scan">▣<span>Escanear</span></button></div>
+    <div class="code-row"><label>Código o descripción<input id="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" list="materialCodes" placeholder="Escanea CME o descripción"><datalist id="materialCodes"></datalist><small class="muted" style="display:block;margin-top:6px">Puedes escribir o escanear el CME o la descripción. La app identifica coincidencias mayores al 90% y coloca el CME correcto.</small></label><button id="scan" type="button" class="scan">▣<span>Escanear</span></button></div>
     <label>Descripción<input id="desc" autocomplete="off" placeholder="Opcional; se completa si ya existe"></label><label>Cantidad inventariada (piezas)<input id="qty" type="number" min="0" step="1" inputmode="numeric" required placeholder="Ej. 145"></label>
     <label>Observaciones<textarea id="notes" rows="2" placeholder="Ej. costado derecho, caja superior…"></textarea></label>
     <div class="keep"><span>Después de guardar</span><strong>Conservar Rack / Posición / Nivel</strong></div>
@@ -107,8 +107,67 @@ var MATERIAL_DESC_INDEX={};
 function normalizeMaterialText(v){return String(v==null?"":v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[´’‘`]/g,"'").replace(/[^A-Z0-9]+/g," ").replace(/\s+/g," ").trim()}
 function rebuildCatalogIndex(){MATERIAL_DESC_INDEX={};Object.keys(MATERIAL_CATALOG).forEach(function(code){var n=normalizeMaterialText(MATERIAL_CATALOG[code]);if(!n)return;if(!(n in MATERIAL_DESC_INDEX))MATERIAL_DESC_INDEX[n]=code;else if(MATERIAL_DESC_INDEX[n]!==code)MATERIAL_DESC_INDEX[n]=null})}
 function initCatalog(){rebuildCatalogIndex();var d=$("#materialCodes");if(d){d.innerHTML=Object.keys(MATERIAL_CATALOG).map(function(k){var desc=MATERIAL_CATALOG[k]||"";return '<option value="'+esc(k)+'">'+esc(desc)+'</option><option value="'+esc(desc)+'">'+esc(k)+'</option>'}).join("")}}
-function resolveMaterialInput(value,allowUniquePartial){var raw=String(value||"").trim();if(!raw)return null;var code=raw.toUpperCase();if(MATERIAL_CATALOG[code])return {code:code,description:MATERIAL_CATALOG[code],match:"code"};var norm=normalizeMaterialText(raw),exact=MATERIAL_DESC_INDEX[norm];if(exact)return {code:exact,description:MATERIAL_CATALOG[exact],match:"description"};if(allowUniquePartial&&norm.length>=8){var candidates=Object.keys(MATERIAL_CATALOG).filter(function(k){var dn=normalizeMaterialText(MATERIAL_CATALOG[k]);return dn&&((dn.indexOf(norm)>-1)||(norm.indexOf(dn)>-1))});if(candidates.length===1)return {code:candidates[0],description:MATERIAL_CATALOG[candidates[0]],match:"unique"}}return null}
-function applyCatalogCode(finalize){var el=$("#code"),desc=$("#desc"),raw=(el.value||"").trim(),hit=resolveMaterialInput(raw,!!finalize);if(hit){el.value=hit.code;desc.value=hit.description;desc.dataset.catalogFilled="1";return hit}if(desc.dataset.catalogFilled==="1"){desc.value="";delete desc.dataset.catalogFilled}return null}
+function materialNumbers(v){return (normalizeMaterialText(v).match(/\d+/g)||[])}
+function criticalMaterialMatch(input,candidate){
+ var inNums=materialNumbers(input),caNums=materialNumbers(candidate);
+ if(caNums.length&&caNums.some(function(n){return inNums.indexOf(n)<0}))return false;
+ var sides=["FTE","REV","FREV","FRE"],it=normalizeMaterialText(input).split(" "),ct=normalizeMaterialText(candidate).split(" ");
+ var iside=sides.find(function(x){return it.indexOf(x)>-1}),cside=sides.find(function(x){return ct.indexOf(x)>-1});
+ if(iside&&cside&&iside!==cside)return false;
+ return true;
+}
+function stripLotNoise(input,candidate){
+ var cand=new Set(normalizeMaterialText(candidate).split(" "));
+ return normalizeMaterialText(input).split(" ").filter(function(t){
+   if(!t)return false;
+   if(cand.has(t))return true;
+   if(/^LOT(E)?[A-Z0-9]*\d[A-Z0-9]*$/.test(t))return false;
+   if(/^(?=.*\d)[A-Z0-9]{5,}$/.test(t))return false;
+   return true;
+ }).join(" ");
+}
+function editSimilarity(a,b){
+ a=normalizeMaterialText(a);b=normalizeMaterialText(b);
+ if(a===b)return 1;if(!a||!b)return 0;
+ if(a.indexOf(b)>-1)return 1;
+ var prev=new Array(b.length+1),cur=new Array(b.length+1);
+ for(var j=0;j<=b.length;j++)prev[j]=j;
+ for(var i=1;i<=a.length;i++){
+   cur[0]=i;
+   for(var k=1;k<=b.length;k++)cur[k]=Math.min(cur[k-1]+1,prev[k]+1,prev[k-1]+(a.charAt(i-1)===b.charAt(k-1)?0:1));
+   var tmp=prev;prev=cur;cur=tmp;
+ }
+ return 1-(prev[b.length]/Math.max(a.length,b.length));
+}
+function fuzzyMaterialMatch(value){
+ var raw=String(value||"").trim(),norm=normalizeMaterialText(raw);
+ if(norm.length<8)return null;
+ var ranked=[];
+ Object.keys(MATERIAL_CATALOG).forEach(function(code){
+   var desc=MATERIAL_CATALOG[code]||"";
+   if(!criticalMaterialMatch(raw,desc))return;
+   var cleaned=stripLotNoise(raw,desc);
+   var dn=normalizeMaterialText(desc),score=(normalizeMaterialText(cleaned).indexOf(dn)>-1)?1:editSimilarity(cleaned,desc);
+   if(score>0.90)ranked.push({code:code,description:desc,score:score});
+ });
+ ranked.sort(function(a,b){return b.score-a.score});
+ if(!ranked.length)return null;
+ if(ranked.length>1&&(ranked[0].score-ranked[1].score)<0.035)return null;
+ return {code:ranked[0].code,description:ranked[0].description,match:"fuzzy",score:ranked[0].score};
+}
+function resolveMaterialInput(value,allowFuzzy){
+ var raw=String(value||"").trim();if(!raw)return null;
+ var code=raw.toUpperCase();if(MATERIAL_CATALOG[code])return {code:code,description:MATERIAL_CATALOG[code],match:"code",score:1};
+ var norm=normalizeMaterialText(raw),exact=MATERIAL_DESC_INDEX[norm];
+ if(exact)return {code:exact,description:MATERIAL_CATALOG[exact],match:"description",score:1};
+ return allowFuzzy?fuzzyMaterialMatch(raw):null;
+}
+function applyCatalogCode(finalize){
+ var el=$("#code"),desc=$("#desc"),raw=(el.value||"").trim(),hit=resolveMaterialInput(raw,!!finalize);
+ if(hit){el.value=hit.code;desc.value=hit.description;desc.dataset.catalogFilled="1";return hit}
+ if(desc.dataset.catalogFilled==="1"){desc.value="";delete desc.dataset.catalogFilled}
+ return null;
+}
 function probePublicGas(){return new Promise(function(resolve,reject){if(!cfg.gasUrl)return reject(new Error("Falta URL de GAS"));var cb="probe_"+Date.now()+"_"+Math.floor(Math.random()*99999),done=false,script=document.createElement("script");window[cb]=function(data){if(done)return;done=true;cleanup();resolve(data||{})};function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}script.onerror=function(){if(!done){done=true;cleanup();reject(new Error("Sin respuesta pública de GAS"))}};script.src=cfg.gasUrl+(cfg.gasUrl.indexOf("?")>-1?"&":"?")+"action=ping&callback="+encodeURIComponent(cb);document.head.appendChild(script);var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error("Tiempo de espera agotado"))}},9000)})}
 function friendlyConnectionError(msg){msg=String(msg||"");if(msg.indexOf("Primero ejecuta setup")>-1)return "Falta actualizar el Web App GAS";if(msg.indexOf("Tiempo de espera")>-1||msg.indexOf("Sin conexión")>-1)return "GAS sin respuesta";return msg||"Sin conexión"}
 function toast(t){var x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(function(){x.classList.remove("show")},2200)}
@@ -224,7 +283,7 @@ function openSettings(){var d=$("#operatorDialog");$("#operatorName").value=cfg.
 function showView(id){$$(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});$$(".nav").forEach(function(b){b.classList.toggle("active",b.dataset.view===id)});if(id==="racks")renderOverview();if(id==="inventory")renderInventory()}
 async function scan(){
  if(!("BarcodeDetector" in window)||!navigator.mediaDevices){return toast("Este navegador no soporta escaneo directo")}
- try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();toast(found?("Material identificado: "+found.code):"Lectura sin coincidencia en catálogo");$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
+ try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
 $("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").onchange=function(){state.position=Number(this.value)||1;clamp()};$("#level").onchange=function(){state.level=Number(this.value)||1;clamp()};$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
