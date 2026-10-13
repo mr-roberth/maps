@@ -35,25 +35,22 @@ Hojas:
 - CATALOGO: códigos/descripciones opcionales.
 - CONFIG: parámetros de la solución.
 
-## Activar GAS
+## Activar / actualizar GAS
 
-El código ya está en `gas/Code.gs`.
+El frontend ya conoce la URL del Web App y en los dispositivos nuevos **solo solicita el nombre del capturista**.
 
-1. Abre el Google Sheet.
-2. Ve a **Extensiones > Apps Script**.
-3. Sustituye el contenido de `Code.gs` por el archivo de este repositorio.
-4. En Configuración del proyecto, activa la visualización del archivo de manifiesto y sustituye `appsscript.json` por `gas/appsscript.json`.
-5. Ejecuta una vez la función `setup()` y autoriza el acceso al Sheet.
-6. Revisa el registro de ejecución y copia el valor `MAPEO_API_KEY`.
-7. **Implementar > Nueva implementación > Aplicación web**.
-   - Ejecutar como: tú.
-   - Quién tiene acceso: cualquiera.
-8. Copia la URL terminada en `/exec`.
-9. Abre la mini app en el celular. La URL del Web App ya está preconfigurada.
-10. Toca ⚙ e introduce una sola vez la **MAPEO_API_KEY** y el nombre del capturista/dispositivo.
-11. Pulsa **Probar**. La app mostrará el resultado dentro de la ventana de configuración y, al guardar, conservará la clave únicamente en el almacenamiento local de ese navegador.
+Para aplicar este cambio al backend:
 
-Después de eso el sistema queda operativo.
+1. Abre el proyecto de Apps Script asociado.
+2. Sustituye `Code.gs` por `gas/Code.gs` de este repositorio.
+3. Ejecuta `setup()` una vez si el proyecto todavía no está inicializado.
+4. Ve a **Implementar > Administrar implementaciones**.
+5. Edita la Aplicación web y publica una **Nueva versión**.
+6. Ejecutar como: tú.
+7. Acceso: **Cualquiera**.
+8. Conserva la misma URL `/exec`.
+
+Después, cualquier celular nuevo abrirá la app, escribirá su nombre y podrá comenzar. No se solicita API key ni token.
 
 ## Flujo recomendado
 
@@ -70,13 +67,4 @@ La app guarda registros pendientes localmente si se pierde la conexión y permit
 
 ## Seguridad
 
-El repositorio `maps` es público. Por esa razón la clave `MAPEO_API_KEY` **no se incluye en el código ni en Google Sheets**. La URL de GAS sí está preconfigurada porque no es un secreto. La clave permanece en Script Properties de Apps Script y, después de introducirla, en `localStorage` del celular.
-
-
-## Enlace de activación del celular
-
-La app admite una activación de una sola vez mediante el fragmento local `#k=...`.
-Ese valor se guarda en `localStorage` del navegador y el fragmento se elimina de la barra de direcciones inmediatamente.
-Así la API key no queda publicada en el repositorio ni en Google Sheets.
-
-Después de la activación, la app se conecta automáticamente y no vuelve a pedir la clave en ese navegador.
+La app de GitHub Pages es pública. Para cumplir el flujo solicitado de “solo nombre del capturista”, el Web App de GAS ya no valida una API key enviada por el navegador. Esto simplifica el uso en campo, pero significa que la URL del Web App debe tratarse como un endpoint operativo y conviene no difundirla fuera del equipo.
