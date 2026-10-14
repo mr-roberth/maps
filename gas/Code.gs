@@ -1,5 +1,5 @@
 const SPREADSHEET_ID = '12SCiQm8V1KWoDCcvSME3rLUsQUM7YNqKPbT7IsKf2s4';
-const SHEETS = { MAPEO: 'MAPEO', RACKS: 'RACKS', CATALOGO: 'CATALOGO', CONFIG: 'CONFIG' };
+const SHEETS = { MAPEO: 'MAPEO', RACKS: 'RACKS', CATALOGO: 'CATALOGO', CONFIG: 'CONFIG', RACK_LAYOUT: 'RACK_LAYOUT' };
 
 function setup() {
   ensureStructure_();
@@ -13,18 +13,19 @@ function doGet(e) {
   try {
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '2.4.0', time: new Date().toISOString() };
-    else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
+    if (action === 'ping') data = { ok: true, version: '2.5.0', time: new Date().toISOString() };
+    else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), layout: rackLayout_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
     else if (action === 'recent') data = { ok: true, recent: recent_(20) };
-    else if (action === 'records') data = { ok: true, records: activeMappings_().slice().reverse() };
+    else if (action === 'records') data = { ok: true, records: activeMappings_().slice().reverse(), layout: rackLayout_() };
     else if (action === 'bulkDelete') data = bulkDeleteMappings_(p.ids || '');
     else if (action === 'catalog') data = { ok: true, catalog: catalog_() };
     else if (action === 'lookupMaterial') data = { ok: true, material: lookupMaterial_(p.code || p.q || p.description || '') };
     else if (action === 'addMaterial') data = addMaterial_(p);
     else if (action === 'saveMapping') data = saveMapping_(p);
     else if (action === 'updateRack') data = updateRack_(p);
+    else if (action === 'saveRackLayout') data = saveRackLayout_(p);
     else if (action === 'deleteMapping') data = deleteMapping_(p);
     else data = { ok: false, error: 'Acción no reconocida' };
     return jsonp_(callback, data);
@@ -41,6 +42,7 @@ function doPost(e) {
     if (action === 'saveMapping') data = saveMapping_(body);
     else if (action === 'addMaterial') data = addMaterial_(body);
     else if (action === 'updateRack') data = updateRack_(body);
+    else if (action === 'saveRackLayout') data = saveRackLayout_(body);
     else if (action === 'deleteMapping') data = deleteMapping_(body);
     else if (action === 'bulkDelete') data = bulkDeleteMappings_(body.ids || '');
     else data = { ok: false, error: 'Acción POST no reconocida' };
@@ -57,7 +59,8 @@ function ensureStructure_() {
     ['MAPEO', ['ID','FechaHora','Rack','Posicion','Nivel','CodigoMaterial','Descripcion','CantidadPiezas','Observaciones','Usuario','Estado']],
     ['RACKS', ['Rack','Posiciones','Niveles','Activo','Notas','UltimaActualizacion']],
     ['CATALOGO', ['CodigoMaterial','Descripcion','Categoria','Unidad','Activo']],
-    ['CONFIG', ['Clave','Valor','Descripcion','Editable']]
+    ['CONFIG', ['Clave','Valor','Descripcion','Editable']],
+    ['RACK_LAYOUT', ['Rack','X','Y','UpdatedBy','UpdatedAt','Version']]
   ];
   defs.forEach(function(d) {
     let sh = ss.getSheetByName(d[0]);
@@ -75,6 +78,12 @@ function ensureStructure_() {
     }
     if (add.length) racks.getRange(racks.getLastRow()+1,1,add.length,6).setValues(add);
   }
+  const layout = ss.getSheetByName('RACK_LAYOUT');
+  if (layout.getLastRow() < 27) {
+    const rows = [];
+    for (let i=0;i<26;i++) rows.push([String.fromCharCode(65+i),(i%6)*2,Math.floor(i/6)*2,'','',1]);
+    layout.getRange(2,1,26,6).setValues(rows);
+  }
 }
 
 function ss_(){ return SpreadsheetApp.openById(SPREADSHEET_ID); }
@@ -84,6 +93,56 @@ function upper_(v){ return clean_(v).toUpperCase(); }
 function tz_(){ return ss_().getSpreadsheetTimeZone() || 'America/Mexico_City'; }
 function sanitizeCallback_(v){ return /^[A-Za-z_$][0-9A-Za-z_$\.]*$/.test(v) ? v : 'callback'; }
 function jsonp_(callback,obj){ return ContentService.createTextOutput(callback + '(' + JSON.stringify(obj) + ');').setMimeType(ContentService.MimeType.JAVASCRIPT); }
+
+function rackLayout_() {
+  const sh = sheet_(SHEETS.RACK_LAYOUT), last = sh.getLastRow();
+  const out = {};
+  if (last >= 2) {
+    sh.getRange(2,1,last-1,6).getValues().forEach(function(r){
+      const rack = upper_(r[0]);
+      if (/^[A-Z]$/.test(rack)) out[rack] = { rack:rack, x:Number(r[1])||0, y:Number(r[2])||0, updatedBy:clean_(r[3]), updatedAt:r[4] || '', version:Number(r[5])||1 };
+    });
+  }
+  for (let i=0;i<26;i++) {
+    const rack=String.fromCharCode(65+i);
+    if (!out[rack]) out[rack]={rack:rack,x:(i%6)*2,y:Math.floor(i/6)*2,updatedBy:'',updatedAt:'',version:1};
+  }
+  return out;
+}
+
+function saveRackLayout_(b) {
+  const raw = clean_(b.layout);
+  if (!raw) throw new Error('Layout requerido');
+  let arr;
+  try { arr = JSON.parse(raw); } catch (e) { throw new Error('Layout inválido'); }
+  if (!Array.isArray(arr) || !arr.length) throw new Error('Layout inválido');
+  const byRack = {};
+  arr.forEach(function(item){
+    const rack = upper_(item && item.rack);
+    const x = Number(item && item.x), y = Number(item && item.y);
+    if (!/^[A-Z]$/.test(rack)) return;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 11 || y < 0 || y > 9) return;
+    byRack[rack] = {rack:rack,x:Math.round(x),y:Math.round(y)};
+  });
+  const current = rackLayout_();
+  const user = clean_(b.user);
+  const now = new Date();
+  const version = now.getTime();
+  const rows = [];
+  for (let i=65;i<=90;i++) {
+    const rack=String.fromCharCode(i), p=byRack[rack] || current[rack] || {x:0,y:0};
+    rows.push([rack,Number(p.x)||0,Number(p.y)||0,user,now,version]);
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sh=sheet_(SHEETS.RACK_LAYOUT);
+    sh.getRange(2,1,26,6).setValues(rows);
+  } finally {
+    lock.releaseLock();
+  }
+  return {ok:true, layout:rackLayout_(), version:version};
+}
 
 function racks_() {
   const sh = sheet_(SHEETS.RACKS), last = sh.getLastRow();
