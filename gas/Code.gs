@@ -13,11 +13,13 @@ function doGet(e) {
   try {
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '2.3.0', time: new Date().toISOString() };
+    if (action === 'ping') data = { ok: true, version: '2.4.0', time: new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
     else if (action === 'recent') data = { ok: true, recent: recent_(20) };
+    else if (action === 'records') data = { ok: true, records: activeMappings_().slice().reverse() };
+    else if (action === 'bulkDelete') data = bulkDeleteMappings_(p.ids || '');
     else if (action === 'catalog') data = { ok: true, catalog: catalog_() };
     else if (action === 'lookupMaterial') data = { ok: true, material: lookupMaterial_(p.code || p.q || p.description || '') };
     else if (action === 'addMaterial') data = addMaterial_(p);
@@ -40,6 +42,7 @@ function doPost(e) {
     else if (action === 'addMaterial') data = addMaterial_(body);
     else if (action === 'updateRack') data = updateRack_(body);
     else if (action === 'deleteMapping') data = deleteMapping_(body);
+    else if (action === 'bulkDelete') data = bulkDeleteMappings_(body.ids || '');
     else data = { ok: false, error: 'Acción POST no reconocida' };
     return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -202,6 +205,33 @@ function deleteMapping_(b) {
   sh.getRange(i+2,11).setValue('ELIMINADO');
   return { ok:true, id:id };
 }
+function bulkDeleteMappings_(idsValue) {
+  const ids = Array.isArray(idsValue) ? idsValue.map(clean_).filter(Boolean) : clean_(idsValue).split(',').map(clean_).filter(Boolean);
+  if (!ids.length) throw new Error('Sin IDs para eliminar');
+  const wanted = {};
+  ids.forEach(function(id){ wanted[id] = true; });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sh = sheet_(SHEETS.MAPEO), last = sh.getLastRow();
+    if (last < 2) return { ok:true, deleted:0, ids:[] };
+    const rows = sh.getRange(2,1,last-1,11).getValues();
+    const status = rows.map(function(r){ return [r[10] || 'ACTIVO']; });
+    const deletedIds = [];
+    rows.forEach(function(r,i){
+      const id = clean_(r[0]);
+      if (wanted[id] && upper_(r[10] || 'ACTIVO') !== 'ELIMINADO') {
+        status[i][0] = 'ELIMINADO';
+        deletedIds.push(id);
+      }
+    });
+    if (deletedIds.length) sh.getRange(2,11,status.length,1).setValues(status);
+    return { ok:true, deleted:deletedIds.length, ids:deletedIds };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 
 function catalog_() {
   const sh = sheet_(SHEETS.CATALOGO), last = sh.getLastRow();
