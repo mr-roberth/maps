@@ -25,13 +25,13 @@ label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bot
 .rack-map{overflow:auto}.rack-table{min-width:100%;display:grid;gap:7px}.rack-row{display:grid;grid-template-columns:56px repeat(var(--cols),minmax(56px,1fr));gap:7px}.rack-cell{min-height:52px;border-radius:12px;background:#f3f7f4;border:1px solid var(--line);padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:10px}.rack-cell.level{background:var(--g);color:#fff;font-weight:900}.rack-cell.used{background:#e4f5e5;border-color:#9dd89d;color:#205f27}.rack-cell b{font-size:12px}
 .list{display:grid;gap:8px}.item{display:grid;grid-template-columns:50px 1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:14px}.loc{background:var(--pale);border-radius:10px;padding:8px 4px;text-align:center;font-weight:900;color:var(--g)}.item strong{display:block}.item small{display:block;color:var(--muted);margin-top:2px}.item time{font-size:10px;color:var(--muted)}
 .searchbox{display:flex;gap:10px}.searchbox input{margin:0}.searchbox .btn{flex:0 0 auto}.results{display:grid;gap:10px;margin-top:12px}.result{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(13,74,53,.06)}.result .where{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.pill{padding:6px 9px;border-radius:999px;background:var(--pale);color:var(--g);font-size:11px;font-weight:900}
-.overview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.rack-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;text-align:left}.rack-card b{font-size:24px;color:var(--g)}.rack-card small{display:block;color:var(--muted);margin-top:4px}.rack-card.ready{background:var(--pale);border-color:#b9d8c8}
+.rack-layout-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}.rack-layout-toolbar .muted{flex:1;min-width:180px}.rack-layout-scroll{overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:6px}.overview{position:relative;display:block;min-width:760px;height:500px;border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:var(--shadow);overflow:hidden}.overview.editing{background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px);background-size:8.333% 10%}.rack-card{position:absolute;border:1px solid var(--line);border-radius:16px;background:#fff;padding:10px;text-align:left;min-height:64px;box-shadow:0 6px 16px rgba(13,74,53,.08);transition:left .15s ease,top .15s ease,box-shadow .15s ease,transform .15s ease;user-select:none;-webkit-user-select:none;touch-action:manipulation}.rack-card b{font-size:23px;color:var(--g)}.rack-card small{display:block;color:var(--muted);margin-top:3px;font-size:10px;line-height:1.2}.rack-card.ready{background:var(--pale);border-color:#b9d8c8}.overview.editing .rack-card{cursor:grab;touch-action:none;outline:1px dashed rgba(13,74,53,.18)}.overview.editing .rack-card.dragging{cursor:grabbing;z-index:20;box-shadow:0 16px 34px rgba(13,74,53,.24);transform:scale(1.03);transition:none}.layout-save-note{font-size:11px;font-weight:800;color:var(--g2)}
 .bottom{position:fixed;left:0;right:0;bottom:0;z-index:35;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:8px 10px max(8px,env(safe-area-inset-bottom))}.nav{border:0;background:transparent;color:var(--muted);padding:7px}.nav span{display:block;font-size:21px}.nav small{font-size:10px;font-weight:900}.nav.active{color:var(--g)}
 dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;height:100%;margin:0}.sheet{position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:24px 24px 0 0;padding:18px;max-height:88vh;overflow:auto;box-shadow:0 -20px 50px rgba(0,0,0,.18)}dialog::backdrop{background:rgba(8,25,18,.45);backdrop-filter:blur(2px)}.dialog-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.muted{color:var(--muted);font-size:12px;line-height:1.5}.test-status{min-height:42px;margin:4px 0 12px;padding:10px 12px;border-radius:12px;background:#f4f8f5;color:var(--muted);font-size:12px;font-weight:800}.test-status.ok{background:#e7f7e5;color:#246128}.test-status.bad{background:#fdecec;color:#9f2d2d}.link{display:block;margin-top:14px;text-align:center;color:var(--g);font-weight:900;text-decoration:none}
 .toast{position:fixed;z-index:60;left:50%;bottom:102px;transform:translateX(-50%) translateY(20px);background:#12291f;color:#fff;padding:11px 16px;border-radius:999px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;transition:.2s;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .loading{position:fixed;z-index:70;inset:0;background:rgba(255,255,255,.76);display:grid;place-items:center}.loading>div{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 22px;box-shadow:var(--shadow);font-weight:900;color:var(--g)}
 .scanner{position:absolute;inset:0;background:#07130e;color:#fff;padding:16px}.scanner video{width:100%;height:70vh;object-fit:cover;border-radius:18px;margin-top:12px}.scanline{position:absolute;left:12%;right:12%;top:42%;height:2px;background:var(--lime);box-shadow:0 0 14px var(--lime)}
-@media(min-width:700px){main{padding:22px}.overview{grid-template-columns:repeat(6,1fr)}.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%);bottom:20px;border-radius:24px}.bottom{left:50%;right:auto;width:620px;transform:translateX(-50%);border:1px solid var(--line);border-radius:20px 20px 0 0}}
+@media(min-width:700px){main{padding:22px}.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%);bottom:20px;border-radius:24px}.bottom{left:50%;right:auto;width:620px;transform:translateX(-50%);border:1px solid var(--line);border-radius:20px 20px 0 0}}
 .catalog-gate{border:1px solid #e1c989;background:#fffaf0;border-radius:14px;padding:12px;margin:4px 0 12px;display:grid;gap:8px}.catalog-gate.hidden{display:none}.catalog-gate strong{color:#7a5a00}.catalog-gate small{color:var(--muted);line-height:1.35}.btn:disabled,.scan:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.15)}
 .delete-mini{border:0;background:#fff0f0;color:var(--danger);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:900;white-space:nowrap}.delete-mini:disabled{opacity:.5}.delete-summary{background:#f7f9f8;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:4px}.delete-summary strong{font-size:18px}.danger{background:var(--danger)!important;color:#fff!important}
 .manage-toolbar{display:grid;gap:10px}.manage-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}.manage-list{display:grid;gap:8px}.manage-row{display:grid;grid-template-columns:30px 54px 1fr;gap:10px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px}.manage-row input[type="checkbox"]{width:22px;height:22px;margin-top:4px;accent-color:var(--g)}.manage-row .meta{font-size:11px;color:var(--muted);line-height:1.45}.manage-row .qty{font-weight:900;color:var(--g)}.manage-count{font-size:12px;font-weight:900;color:var(--g)}.manage-sticky{position:sticky;top:68px;z-index:10;background:var(--bg);padding-bottom:8px}
@@ -63,7 +63,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
   <div class="card"><div class="card-head"><div><p class="eyebrow">RECIENTES</p><h2>Últimos 12 registros</h2></div><button id="sync" class="btn secondary">Sincronizar</button></div><div id="recent" class="list"><div class="empty">Sin registros.</div></div></div>
 </section>
 <section id="search" class="view"><div class="heading"><div><p class="eyebrow">LOCALIZADOR</p><h1>¿Dónde está?</h1></div></div><div class="card"><div class="searchbox"><input id="searchInput" type="search" placeholder="Código o descripción"><button id="searchBtn" class="btn primary">Buscar</button></div></div><div id="searchResults" class="results"><div class="empty">Busca un material para ver todas sus ubicaciones.</div></div></section>
-<section id="racks" class="view"><div class="heading"><div><p class="eyebrow">MAPA MAESTRO</p><h1>Racks A–Z</h1></div></div><div id="overview" class="overview"></div></section><section id="inventory" class="view"><div class="heading"><div><p class="eyebrow">CONTEO FÍSICO</p><h1>Inventario total</h1></div><span id="inventoryTotal" class="badge ok">0 pzas</span></div><div class="card"><div class="searchbox"><input id="inventorySearch" type="search" placeholder="Filtrar código o descripción"><button id="downloadInventory" type="button" class="btn primary">Descargar CSV</button></div><p class="muted">Muestra el inventario activo consolidado de todos los dispositivos. Se actualiza automáticamente desde Sheets.</p><small id="inventorySyncLabel" class="muted">Sincronizando…</small></div><div id="inventoryResults" class="results"><div class="empty">Cargando inventario total…</div></div></section>
+<section id="racks" class="view"><div class="heading"><div><p class="eyebrow">MAPA MAESTRO</p><h1>Racks A–Z</h1></div></div><div class="card"><div class="rack-layout-toolbar"><button id="layoutEdit" type="button" class="btn secondary">Editar acomodo</button><button id="layoutSave" type="button" class="btn primary hidden">Guardar mapa</button><button id="layoutReset" type="button" class="btn secondary hidden">Restablecer A–Z</button><button id="layoutCancel" type="button" class="btn secondary hidden">Cancelar</button><span id="layoutStatus" class="layout-save-note">Acomodo compartido entre dispositivos</span></div><p class="muted">El acomodo visual no cambia inventario, posiciones, niveles ni configuraciones de los racks.</p></div><div class="rack-layout-scroll"><div id="overview" class="overview"></div></div></section><section id="inventory" class="view"><div class="heading"><div><p class="eyebrow">CONTEO FÍSICO</p><h1>Inventario total</h1></div><span id="inventoryTotal" class="badge ok">0 pzas</span></div><div class="card"><div class="searchbox"><input id="inventorySearch" type="search" placeholder="Filtrar código o descripción"><button id="downloadInventory" type="button" class="btn primary">Descargar CSV</button></div><p class="muted">Muestra el inventario activo consolidado de todos los dispositivos. Se actualiza automáticamente desde Sheets.</p><small id="inventorySyncLabel" class="muted">Sincronizando…</small></div><div id="inventoryResults" class="results"><div class="empty">Cargando inventario total…</div></div></section>
 <section id="manage" class="view">
   <div class="heading"><div><p class="eyebrow">GESTIÓN</p><h1>Registros activos</h1></div><span id="manageCount" class="badge ok">0 activos</span></div>
   <div class="manage-sticky">
@@ -101,7 +101,7 @@ cfg.gasUrl=DEFAULT_GAS_URL;
 if("apiKey" in cfg) delete cfg.apiKey;
 localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));
 var state={rack:localStorage.getItem("rack")||"A",position:Number(localStorage.getItem("pos")||1),level:Number(localStorage.getItem("level")||1),racks:{},records:[],recent:JSON.parse(localStorage.getItem("rackRecent")||"[]"),pending:JSON.parse(localStorage.getItem("rackPending")||"[]"),deletePending:JSON.parse(localStorage.getItem("rackDeletePending")||"[]"),inventory:JSON.parse(localStorage.getItem("rackInventory")||"[]")};
-var manageRecords=[],manageSelected={},autoSyncBusy=false,lastAutoSyncAt=0;
+var manageRecords=[],manageSelected={},autoSyncBusy=false,lastAutoSyncAt=0,rackLayout={},layoutEditMode=false,layoutDirty=false,layoutSnapshot=null,layoutDrag=null;
 var scanStream=null,scanTimer=null;
 var PROD_RESET_VERSION="2026-10-06-empaque-v1";
 function applyProductionReset(){
@@ -211,6 +211,7 @@ function applyActiveRecordsToRackState(records){
 }
 function applyServerRecords(records,opts){
  records=records||[];
+ if(opts&&opts.layout)applyRackLayout(opts.layout);
  state.inventory=records.slice();
  state.recent=records.slice(0,20);
  state.records=records.filter(function(x){return String(x.rack||"").toUpperCase()===String(state.rack||"").toUpperCase()});
@@ -236,7 +237,7 @@ function refreshAllDevicesData(force){
  autoSyncBusy=true;
  return api("records",{},9000).then(function(d){
    lastAutoSyncAt=Date.now();
-   applyServerRecords(d.records||[],{manage:!!document.querySelector("#manage.view.active")});
+   applyServerRecords(d.records||[],{manage:!!document.querySelector("#manage.view.active"),layout:d.layout||null});
    updateStatus(true,pendingStatusText());
    return d.records||[]
  }).catch(function(e){
@@ -295,17 +296,98 @@ function renderRackStrip(){
  var h="";for(var i=65;i<=90;i++){var r=String.fromCharCode(i);h+='<button class="rack-chip '+(r===state.rack?"active":"")+'" data-rack="'+r+'">'+r+"</button>"}$("#rackStrip").innerHTML=h;
  document.querySelectorAll("#rackStrip [data-rack]").forEach(function(b){b.onclick=function(){state.rack=b.dataset.rack;state.position=1;state.level=1;saveState();renderRackStrip();updateLocation();loadRack()}})
 }
+var LAYOUT_COLS=12,LAYOUT_ROWS=10;
+function defaultRackLayout(){
+ var out={};
+ for(var i=0;i<26;i++){var r=String.fromCharCode(65+i);out[r]={rack:r,x:(i%6)*2,y:Math.floor(i/6)*2}}
+ return out
+}
+function normalizeRackLayout(src){
+ var base=defaultRackLayout(),out={};
+ for(var i=65;i<=90;i++){
+   var r=String.fromCharCode(i),p=src&&src[r]||base[r];
+   out[r]={rack:r,x:Math.max(0,Math.min(11,Math.round(Number(p&&p.x)||0))),y:Math.max(0,Math.min(9,Math.round(Number(p&&p.y)||0)))}
+ }
+ return out
+}
+function applyRackLayout(src){
+ if(layoutEditMode&&layoutDirty)return;
+ rackLayout=normalizeRackLayout(src||rackLayout);
+ renderOverview()
+}
+function layoutPctX(x){return .8+(Number(x)||0)*(100/LAYOUT_COLS)}
+function layoutPctY(y){return 1+(Number(y)||0)*(100/LAYOUT_ROWS)}
+function updateLayoutButtons(){
+ $("#layoutEdit").classList.toggle("hidden",layoutEditMode);
+ $("#layoutSave").classList.toggle("hidden",!layoutEditMode);
+ $("#layoutReset").classList.toggle("hidden",!layoutEditMode);
+ $("#layoutCancel").classList.toggle("hidden",!layoutEditMode);
+ $("#layoutStatus").textContent=layoutEditMode?(layoutDirty?"Cambios sin guardar":"Arrastra los racks para acomodarlos"):"Acomodo compartido entre dispositivos"
+}
+function beginLayoutEdit(){
+ layoutSnapshot=JSON.parse(JSON.stringify(normalizeRackLayout(rackLayout)));
+ rackLayout=normalizeRackLayout(rackLayout);
+ layoutEditMode=true;layoutDirty=false;renderOverview();updateLayoutButtons()
+}
+function cancelLayoutEdit(){
+ if(layoutSnapshot)rackLayout=normalizeRackLayout(layoutSnapshot);
+ layoutSnapshot=null;layoutEditMode=false;layoutDirty=false;renderOverview();updateLayoutButtons()
+}
+function resetRackLayout(){
+ if(!layoutEditMode)return;
+ rackLayout=defaultRackLayout();layoutDirty=true;renderOverview();updateLayoutButtons()
+}
+function saveRackLayout(){
+ if(!layoutEditMode)return;
+ if(!navigator.onLine)return toast("Necesitas conexión para guardar el acomodo");
+ var arr=[];for(var i=65;i<=90;i++){var r=String.fromCharCode(i),p=rackLayout[r]||defaultRackLayout()[r];arr.push({rack:r,x:p.x,y:p.y})}
+ var b=$("#layoutSave");b.disabled=true;b.textContent="Guardando…";
+ api("saveRackLayout",{layout:JSON.stringify(arr),user:cfg.user||""},12000).then(function(d){
+   rackLayout=normalizeRackLayout(d.layout||rackLayout);layoutSnapshot=null;layoutEditMode=false;layoutDirty=false;renderOverview();updateLayoutButtons();toast("Acomodo del mapa guardado")
+ }).catch(function(e){toast(e.message||"No se pudo guardar el acomodo")}).finally(function(){b.disabled=false;b.textContent="Guardar mapa"})
+}
+function startRackLayoutDrag(e,el){
+ if(!layoutEditMode)return;
+ e.preventDefault();
+ var rack=el.dataset.r,canvas=$("#overview"),rect=canvas.getBoundingClientRect();
+ layoutDrag={rack:rack,el:el,rect:rect,pointerId:e.pointerId};
+ el.classList.add("dragging");
+ try{el.setPointerCapture(e.pointerId)}catch(_){}
+}
+function moveRackLayoutDrag(e){
+ if(!layoutDrag||!layoutEditMode)return;
+ e.preventDefault();
+ var d=layoutDrag,rect=d.rect;
+ var x=Math.round(((e.clientX-rect.left)/rect.width)*LAYOUT_COLS);
+ var y=Math.round(((e.clientY-rect.top)/rect.height)*LAYOUT_ROWS);
+ x=Math.max(0,Math.min(10,x));y=Math.max(0,Math.min(9,y));
+ rackLayout[d.rack]={rack:d.rack,x:x,y:y};layoutDirty=true;
+ d.el.style.left=layoutPctX(x)+"%";d.el.style.top=layoutPctY(y)+"%";updateLayoutButtons()
+}
+function endRackLayoutDrag(e){
+ if(!layoutDrag)return;
+ try{layoutDrag.el.releasePointerCapture(layoutDrag.pointerId)}catch(_){}
+ layoutDrag.el.classList.remove("dragging");layoutDrag=null
+}
 function renderOverview(){
+ rackLayout=normalizeRackLayout(rackLayout);
  var h="";
  for(var i=65;i<=90;i++){
-   var r=String.fromCharCode(i),c=rackCfg(r),mapped=Number(c.mappedCount)||0,active=mapped>0;
-   var label=active
-     ?(c.positions+" posiciones · "+c.levels+" niveles · "+mapped+" registro"+(mapped===1?"":"s"))
-     :"Sin registros activos";
-   h+='<button class="rack-card '+(active?"ready":"")+'" data-r="'+r+'"><b>'+r+'</b><small>'+label+"</small></button>"
+   var r=String.fromCharCode(i),cfgRack=rackCfg(r),mapped=Number(cfgRack.mappedCount)||0,active=mapped>0,p=rackLayout[r];
+   var label=active?(mapped+" reg. · "+(cfgRack.positions||0)+"P · "+(cfgRack.levels||0)+"N"):"Sin registros";
+   h+='<button type="button" class="rack-card '+(active?"ready ":"")+(layoutEditMode?"layout-movable":"")+'" data-r="'+r+'" style="left:'+layoutPctX(p.x)+'%;top:'+layoutPctY(p.y)+'%;width:15%"><b>'+r+'</b><small>'+label+"</small></button>"
  }
+ $("#overview").classList.toggle("editing",layoutEditMode);
  $("#overview").innerHTML=h;
- document.querySelectorAll("#overview [data-r]").forEach(function(b){b.onclick=function(){state.rack=b.dataset.r;state.position=1;state.level=1;saveState();showView("capture");renderRackStrip();updateLocation();loadRack()}})
+ document.querySelectorAll("#overview [data-r]").forEach(function(b){
+   b.onpointerdown=function(e){startRackLayoutDrag(e,b)};
+   b.onpointermove=moveRackLayoutDrag;b.onpointerup=endRackLayoutDrag;b.onpointercancel=endRackLayoutDrag;
+   b.onclick=function(e){
+     if(layoutEditMode){e.preventDefault();return}
+     state.rack=b.dataset.r;state.position=1;state.level=1;saveState();showView("capture");renderRackStrip();updateLocation();loadRack()
+   }
+ });
+ updateLayoutButtons()
 }
 function clamp(){
  var c=rackCfg(state.rack);if(c.positions)state.position=Math.min(Math.max(1,state.position),c.positions);else state.position=Math.max(1,state.position);
@@ -364,7 +446,7 @@ function bootstrap(){
  }).then(function(d){
    (d.racks||[]).forEach(function(r){state.racks[r.rack]=r});
    (d.catalog||[]).forEach(function(m){if(m&&m.code)MATERIAL_CATALOG[String(m.code).toUpperCase()]=m.description||""});
-   initCatalog();state.recent=d.recent||state.recent;renderRecent();clamp();loadRack();refreshAllDevicesData(true)
+   if(d.layout)rackLayout=normalizeRackLayout(d.layout);initCatalog();state.recent=d.recent||state.recent;renderRecent();renderOverview();clamp();loadRack();refreshAllDevicesData(true)
  }).catch(function(e){
    var m=friendlyConnectionError(e&&e.message);updateStatus(false,m);$("#status").title=(e&&e.message)||m
  })
@@ -538,7 +620,7 @@ function loadManage(){
  if(!navigator.onLine){$("#manageResults").innerHTML='<div class="empty">Necesitas conexión para cargar todos los registros activos.</div>';return}
  $("#manageResults").innerHTML='<div class="empty">Cargando registros…</div>';
  api("records",{},12000).then(function(d){
-   manageRecords=d.records||[];manageSelected={};applyActiveRecordsToRackState(manageRecords);renderManage()
+   if(d.layout)applyRackLayout(d.layout);manageRecords=d.records||[];manageSelected={};applyActiveRecordsToRackState(manageRecords);renderManage()
  }).catch(function(e){$("#manageResults").innerHTML='<div class="empty">'+esc(e.message||"No se pudieron cargar los registros")+'</div>'})
 }
 function filteredManageRecords(){
@@ -616,7 +698,8 @@ async function scan(){
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});document.querySelectorAll("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$("#downloadInventory").onclick=downloadInventoryCsv;$("#manageSearch").oninput=renderManage;$("#manageRefresh").onclick=loadManage;$("#manageSelectAll").onchange=function(){var checked=this.checked;filteredManageRecords().forEach(function(x){manageSelected[x.id]=checked});renderManage()};$("#manageDeleteSelected").onclick=bulkDeleteSelected;document.querySelectorAll(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else{api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending();refreshAllDevicesData(true)}).catch(function(){updateStatus(false,"Sin conexión")})}});window.addEventListener("online",function(){updateStatus(false,"Reconectando…");api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending();refreshAllDevicesData(true)}).catch(function(){updateStatus(false,"GAS sin respuesta")})});setInterval(function(){if(navigator.onLine&&(((state.pending||[]).length)||((state.deletePending||[]).length))){api("ping",{},4000).then(function(){syncPending()}).catch(function(){})}},20000);setInterval(function(){if(navigator.onLine&&!document.hidden){refreshAllDevicesData(false)}},3000);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=26",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});document.querySelectorAll("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$("#downloadInventory").onclick=downloadInventoryCsv;$("#layoutEdit").onclick=beginLayoutEdit;$("#layoutSave").onclick=saveRackLayout;$("#layoutReset").onclick=resetRackLayout;$("#layoutCancel").onclick=cancelLayoutEdit;$("#manageSearch").oninput=renderManage;$("#manageRefresh").onclick=loadManage;$("#manageSelectAll").onchange=function(){var checked=this.checked;filteredManageRecords().forEach(function(x){manageSelected[x.id]=checked});renderManage()};$("#manageDeleteSelected").onclick=bulkDeleteSelected;document.querySelectorAll(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else{api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending();refreshAllDevicesData(true)}).catch(function(){updateStatus(false,"Sin conexión")})}});window.addEventListener("online",function(){updateStatus(false,"Reconectando…");api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending();refreshAllDevicesData(true)}).catch(function(){updateStatus(false,"GAS sin respuesta")})});setInterval(function(){if(navigator.onLine&&(((state.pending||[]).length)||((state.deletePending||[]).length))){api("ping",{},4000).then(function(){syncPending()}).catch(function(){})}},20000);setInterval(function(){if(navigator.onLine&&!document.hidden){refreshAllDevicesData(false)}},3000);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=27",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
+rackLayout=defaultRackLayout();updateLayoutButtons();
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
