@@ -33,6 +33,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 .scanner{position:absolute;inset:0;background:#07130e;color:#fff;padding:16px}.scanner video{width:100%;height:70vh;object-fit:cover;border-radius:18px;margin-top:12px}.scanline{position:absolute;left:12%;right:12%;top:42%;height:2px;background:var(--lime);box-shadow:0 0 14px var(--lime)}
 @media(min-width:700px){main{padding:22px}.overview{grid-template-columns:repeat(6,1fr)}.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%);bottom:20px;border-radius:24px}.bottom{left:50%;right:auto;width:620px;transform:translateX(-50%);border:1px solid var(--line);border-radius:20px 20px 0 0}}
 .catalog-gate{border:1px solid #e1c989;background:#fffaf0;border-radius:14px;padding:12px;margin:4px 0 12px;display:grid;gap:8px}.catalog-gate.hidden{display:none}.catalog-gate strong{color:#7a5a00}.catalog-gate small{color:var(--muted);line-height:1.35}.btn:disabled,.scan:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.15)}
+.delete-mini{border:0;background:#fff0f0;color:var(--danger);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:900;white-space:nowrap}.delete-mini:disabled{opacity:.5}.delete-summary{background:#f7f9f8;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:4px}.delete-summary strong{font-size:18px}.danger{background:var(--danger)!important;color:#fff!important}
 </style>
 </head>
 <body>
@@ -68,6 +69,8 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 <dialog id="rackDialog"><form method="dialog" class="sheet" id="rackForm"><div class="dialog-head"><div><p class="eyebrow">CONFIGURACIÓN FÍSICA</p><h2 id="rackDialogTitle">Rack A</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">Registra lo que observes; puedes corregirlo después.</p><div class="grid2"><label>Posiciones<input id="rackPositions" type="number" min="1" max="500" inputmode="numeric" value="6"></label><label>Niveles<input id="rackLevels" type="number" min="1" max="30" inputmode="numeric" value="3"></label></div><label>Notas<textarea id="rackNotes" rows="3" placeholder="Ej. nivel 4 solo de P1 a P4…"></textarea></label><div class="dialog-actions"><button value="cancel" class="btn secondary">Cancelar</button><button id="rackSave" type="button" class="btn primary">Guardar rack</button></div></form></dialog>
 
 <dialog id="operatorDialog"><form method="dialog" class="sheet" id="operatorForm"><div class="dialog-head"><div><p class="eyebrow">IDENTIFICACIÓN</p><h2>Nombre del capturista</h2></div><button type="button" id="closeOperator" class="icon">×</button></div><p class="muted">La conexión con Oleolab ya está configurada. En cada celular o navegador solo registra el nombre de la persona que realizará la captura.</p><label>Capturista / dispositivo<input id="operatorName" type="text" required autocomplete="name" placeholder="Ej. Artemio"></label><button class="btn primary big wide" type="submit">Guardar y continuar</button></form></dialog>
+
+<dialog id="deleteDialog"><form method="dialog" class="sheet" id="deleteForm"><div class="dialog-head"><div><p class="eyebrow">GESTIÓN DE REGISTROS</p><h2>Eliminar registro</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">El registro se marcará como <b>ELIMINADO</b> y dejará de contabilizar en el rack, posición e inventario activo. No se borra físicamente del historial.</p><div id="deleteSummary" class="delete-summary"></div><div class="dialog-actions"><button value="cancel" class="btn secondary">Cancelar</button><button id="confirmDelete" type="button" class="btn danger">Eliminar registro</button></div></form></dialog>
 
 <dialog id="scannerDialog"><div class="scanner"><div class="dialog-head"><div><p class="eyebrow" style="color:#9ddf7a">CÁMARA</p><h2>Escanear código</h2></div><button id="closeScanner" class="icon">×</button></div><video id="video" autoplay muted playsinline></video><div class="scanline"></div><p>Apunta al código de barras.</p></div></dialog>
 
@@ -226,7 +229,8 @@ function renderRackMap(records){
 }
 function renderRecent(){
  var list=state.recent.slice(0,12);if(!list.length){$("#recent").innerHTML='<div class="empty">Sin registros todavía.</div>';return}
- $("#recent").innerHTML=list.map(function(x){return '<div class="item"><div class="loc">'+x.rack+"<br><small>P"+x.position+" N"+x.level+'</small></div><div><strong>'+esc(x.code)+'</strong><small>'+esc(x.description||x.notes||"Sin descripción")+(Number(x.quantity)>=0?" · <b>"+Number(x.quantity||0).toLocaleString("es-MX")+" pzas</b>":"")+'</small></div><time>'+esc(x.timeLabel||"")+"</time></div>"}).join("")
+ $("#recent").innerHTML=list.map(function(x){return '<div class="item"><div class="loc">'+x.rack+"<br><small>P"+x.position+" N"+x.level+'</small></div><div><strong>'+esc(x.code)+'</strong><small>'+esc(x.description||x.notes||"Sin descripción")+(Number(x.quantity)>=0?" · <b>"+Number(x.quantity||0).toLocaleString("es-MX")+" pzas</b>":"")+'</small></div><div style="display:grid;gap:6px;justify-items:end"><time>'+esc(x.timeLabel||"")+'</time>'+(x.id?'<button type="button" class="delete-mini" data-delete-id="'+esc(x.id)+'">Eliminar</button>':"")+"</div></div>"}).join("");
+ bindDeleteButtons("#recent")
 }
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
 function loadRack(){
@@ -250,6 +254,43 @@ function bootstrap(){
 }
 function localRecord(p){return{id:p.clientId||("local-"+Date.now()),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",quantity:Number(p.quantity)||0,notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
 function newClientId(){return "dev-"+Date.now()+"-"+Math.random().toString(36).slice(2,10)}
+var lastSearchResults=[],pendingDeleteRecord=null,deleteInFlight=false;
+function findRecordById(id){
+ var pools=[state.recent||[],state.records||[],state.inventory||[],lastSearchResults||[]];
+ for(var p=0;p<pools.length;p++){for(var i=0;i<pools[p].length;i++){if(String(pools[p][i].id)===String(id))return pools[p][i]}}
+ return null;
+}
+function removeRecordLocal(id){
+ function drop(a){return (a||[]).filter(function(x){return String(x.id)!==String(id)})}
+ state.recent=drop(state.recent);state.records=drop(state.records);state.inventory=drop(state.inventory);lastSearchResults=drop(lastSearchResults);
+ state.pending=(state.pending||[]).filter(function(x){return String(x.clientId)!==String(id)});
+ saveState();renderRecent();renderRackMap(state.records);renderInventory();
+}
+function openDeleteRecord(id){
+ var rec=findRecordById(id);if(!rec)return toast("No encontré el registro");
+ pendingDeleteRecord=rec;
+ $("#deleteSummary").innerHTML='<strong>'+esc(rec.code||"")+'</strong><span>'+esc(rec.description||"Sin descripción")+'</span><span>Rack '+esc(rec.rack)+' · P'+Number(rec.position||0)+' · N'+Number(rec.level||0)+'</span><span>'+Number(rec.quantity||0).toLocaleString("es-MX")+' pzas'+(rec.user?(' · '+esc(rec.user)):"")+'</span>';
+ $("#deleteDialog").showModal()
+}
+function bindDeleteButtons(root){
+ $(root+" [data-delete-id]").forEach(function(b){b.onclick=function(){openDeleteRecord(b.dataset.deleteId)}})
+}
+function confirmDeleteRecord(){
+ if(deleteInFlight||!pendingDeleteRecord)return;
+ var rec=pendingDeleteRecord,id=String(rec.id||"");
+ if(!id)return toast("Registro sin identificador");
+ deleteInFlight=true;var b=$("#confirmDelete");b.disabled=true;b.textContent="Eliminando…";
+ var localPending=id.indexOf("dev-")===0&&(state.pending||[]).some(function(x){return String(x.clientId)===id});
+ if(localPending){
+   removeRecordLocal(id);pendingDeleteRecord=null;deleteInFlight=false;b.disabled=false;b.textContent="Eliminar registro";$("#deleteDialog").close();toast("Registro local descartado");return
+ }
+ if(!navigator.onLine){deleteInFlight=false;b.disabled=false;b.textContent="Eliminar registro";return toast("Conéctate a internet para eliminar este registro")}
+ api("deleteMapping",{id:id}).then(function(){
+   removeRecordLocal(id);pendingDeleteRecord=null;$("#deleteDialog").close();toast("Registro eliminado");
+   bootstrapRecent();loadRack();var q=$("#searchInput").value.trim();if(q)search()
+ }).catch(function(e){toast(e.message||"No se pudo eliminar")}).finally(function(){deleteInFlight=false;b.disabled=false;b.textContent="Eliminar registro"})
+}
+
 function clearCapture(){ $("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";hideCatalogGate();$("#code").focus() }
 var saveInFlight=false,catalogInFlight=false;
 function setSaveBusy(v){
@@ -338,13 +379,18 @@ function search(){
  if(!cfg.gasUrl){var local=state.recent.filter(function(x){return x.code.toUpperCase().indexOf(q.toUpperCase())>-1||(x.description||"").toUpperCase().indexOf(q.toUpperCase())>-1});return renderSearch(local)}
  loading(true);api("search",{q:q}).then(function(d){renderSearch(d.results||[])}).catch(function(e){toast(e.message)}).finally(function(){loading(false)})
 }
-function renderSearch(a){if(!a.length){$("#searchResults").innerHTML='<div class="empty">No encontré ubicaciones activas.</div>';return}$("#searchResults").innerHTML=a.map(function(x){return '<div class="result"><strong>'+esc(x.code)+'</strong><div class="muted">'+esc(x.description||"Sin descripción")+'</div><div class="where"><span class="pill">Rack '+esc(x.rack)+'</span><span class="pill">Posición '+x.position+'</span><span class="pill">Nivel '+x.level+'</span>'+(x.quantity!=null?'<span class="pill">'+Number(x.quantity||0).toLocaleString("es-MX")+' pzas</span>':"")+'</div>'+(x.notes?'<div class="muted" style="margin-top:8px">'+esc(x.notes)+"</div>":"")+"</div>"}).join("")}
+function renderSearch(a){
+ lastSearchResults=a||[];
+ if(!a.length){$("#searchResults").innerHTML='<div class="empty">No encontré ubicaciones activas.</div>';return}
+ $("#searchResults").innerHTML=a.map(function(x){return '<div class="result"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><strong>'+esc(x.code)+'</strong><div class="muted">'+esc(x.description||"Sin descripción")+'</div></div>'+(x.id?'<button type="button" class="delete-mini" data-delete-id="'+esc(x.id)+'">Eliminar</button>':"")+'</div><div class="where"><span class="pill">Rack '+esc(x.rack)+'</span><span class="pill">Posición '+x.position+'</span><span class="pill">Nivel '+x.level+'</span>'+(x.quantity!=null?'<span class="pill">'+Number(x.quantity||0).toLocaleString("es-MX")+' pzas</span>':"")+'</div>'+(x.notes?'<div class="muted" style="margin-top:8px">'+esc(x.notes)+"</div>":"")+"</div>"}).join("");
+ bindDeleteButtons("#searchResults")
+}
 function renderInventory(){
  var q=($("#inventorySearch")&&$("#inventorySearch").value||"").trim().toUpperCase(),src=state.inventory||[],groups={};
  src.forEach(function(x){var key=String(x.code||"").toUpperCase();if(!key)return;if(q&&key.indexOf(q)<0&&String(x.description||"").toUpperCase().indexOf(q)<0)return;if(!groups[key])groups[key]={code:key,description:x.description||"",total:0,locs:[]};groups[key].total+=Number(x.quantity)||0;groups[key].locs.push(x)});
  var a=Object.keys(groups).map(function(k){return groups[k]}).sort(function(a,b){return a.code.localeCompare(b.code)}),grand=a.reduce(function(s,x){return s+x.total},0);if($("#inventoryTotal"))$("#inventoryTotal").textContent=grand.toLocaleString("es-MX")+" pzas";
  if(!a.length){$("#inventoryResults").innerHTML='<div class="empty">Aún no hay conteos capturados en este dispositivo.</div>';return}
- $("#inventoryResults").innerHTML=a.map(function(g){return '<div class="result"><div style="display:flex;justify-content:space-between;gap:12px"><div><strong>'+esc(g.code)+'</strong><div class="muted">'+esc(g.description||"Sin descripción")+'</div></div><strong style="color:var(--g);font-size:20px">'+g.total.toLocaleString("es-MX")+' pzas</strong></div><div class="where">'+g.locs.map(function(x){return '<span class="pill">Rack '+esc(x.rack)+' · P'+x.position+' · N'+x.level+': '+Number(x.quantity||0).toLocaleString("es-MX")+' pzas</span>'}).join("")+'</div></div>'}).join("")
+ $("#inventoryResults").innerHTML=a.map(function(g){return '<div class="result"><div style="display:flex;justify-content:space-between;gap:12px"><div><strong>'+esc(g.code)+'</strong><div class="muted">'+esc(g.description||"Sin descripción")+'</div></div><strong style="color:var(--g);font-size:20px">'+g.total.toLocaleString("es-MX")+' pzas</strong></div><div class="where">'+g.locs.map(function(x){return '<span class="pill">Rack '+esc(x.rack)+' · P'+x.position+' · N'+x.level+': '+Number(x.quantity||0).toLocaleString("es-MX")+' pzas'+(x.id?' <button type="button" class="delete-mini" style="padding:3px 6px;margin-left:4px" data-delete-id="'+esc(x.id)+'">×</button>':"")+'</span>'}).join("")+'</div></div>'}).join("");bindDeleteButtons("#inventoryResults")
 }
 function openRack(){
  var c=rackCfg(state.rack);$("#rackDialogTitle").textContent="Rack "+state.rack;$("#rackPositions").value=c.positions||6;$("#rackLevels").value=c.levels||3;$("#rackNotes").value=c.notes||"";$("#rackDialog").showModal()
@@ -365,7 +411,7 @@ async function scan(){
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=17",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=17",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
