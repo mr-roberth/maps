@@ -306,7 +306,7 @@ function normalizeRackLayout(src){
  var base=defaultRackLayout(),out={};
  for(var i=65;i<=90;i++){
    var r=String.fromCharCode(i),p=src&&src[r]||base[r];
-   out[r]={rack:r,x:Math.max(0,Math.min(11,Math.round(Number(p&&p.x)||0))),y:Math.max(0,Math.min(9,Math.round(Number(p&&p.y)||0)))}
+   out[r]={rack:r,x:Math.max(0,Math.min(11,Math.round(Number(p&&p.x)||0))),y:Math.max(0,Math.min(8,Math.round(Number(p&&p.y)||0)))}
  }
  return out
 }
@@ -360,7 +360,7 @@ function moveRackLayoutDrag(e){
  var d=layoutDrag,rect=d.rect;
  var x=Math.round(((e.clientX-rect.left)/rect.width)*LAYOUT_COLS);
  var y=Math.round(((e.clientY-rect.top)/rect.height)*LAYOUT_ROWS);
- x=Math.max(0,Math.min(10,x));y=Math.max(0,Math.min(9,y));
+ x=Math.max(0,Math.min(10,x));y=Math.max(0,Math.min(8,y));
  rackLayout[d.rack]={rack:d.rack,x:x,y:y};layoutDirty=true;
  d.el.style.left=layoutPctX(x)+"%";d.el.style.top=layoutPctY(y)+"%";updateLayoutButtons()
 }
