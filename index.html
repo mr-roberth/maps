@@ -26,7 +26,7 @@ label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bot
 .list{display:grid;gap:8px}.item{display:grid;grid-template-columns:50px 1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:14px}.loc{background:var(--pale);border-radius:10px;padding:8px 4px;text-align:center;font-weight:900;color:var(--g)}.item strong{display:block}.item small{display:block;color:var(--muted);margin-top:2px}.item time{font-size:10px;color:var(--muted)}
 .searchbox{display:flex;gap:10px}.searchbox input{margin:0}.searchbox .btn{flex:0 0 auto}.results{display:grid;gap:10px;margin-top:12px}.result{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(13,74,53,.06)}.result .where{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.pill{padding:6px 9px;border-radius:999px;background:var(--pale);color:var(--g);font-size:11px;font-weight:900}
 .overview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.rack-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;text-align:left}.rack-card b{font-size:24px;color:var(--g)}.rack-card small{display:block;color:var(--muted);margin-top:4px}.rack-card.ready{background:var(--pale);border-color:#b9d8c8}
-.bottom{position:fixed;left:0;right:0;bottom:0;z-index:35;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:8px 10px max(8px,env(safe-area-inset-bottom))}.nav{border:0;background:transparent;color:var(--muted);padding:7px}.nav span{display:block;font-size:21px}.nav small{font-size:10px;font-weight:900}.nav.active{color:var(--g)}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:35;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:8px 10px max(8px,env(safe-area-inset-bottom))}.nav{border:0;background:transparent;color:var(--muted);padding:7px}.nav span{display:block;font-size:21px}.nav small{font-size:10px;font-weight:900}.nav.active{color:var(--g)}
 dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;height:100%;margin:0}.sheet{position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:24px 24px 0 0;padding:18px;max-height:88vh;overflow:auto;box-shadow:0 -20px 50px rgba(0,0,0,.18)}dialog::backdrop{background:rgba(8,25,18,.45);backdrop-filter:blur(2px)}.dialog-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.muted{color:var(--muted);font-size:12px;line-height:1.5}.test-status{min-height:42px;margin:4px 0 12px;padding:10px 12px;border-radius:12px;background:#f4f8f5;color:var(--muted);font-size:12px;font-weight:800}.test-status.ok{background:#e7f7e5;color:#246128}.test-status.bad{background:#fdecec;color:#9f2d2d}.link{display:block;margin-top:14px;text-align:center;color:var(--g);font-weight:900;text-decoration:none}
 .toast{position:fixed;z-index:60;left:50%;bottom:102px;transform:translateX(-50%) translateY(20px);background:#12291f;color:#fff;padding:11px 16px;border-radius:999px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;transition:.2s;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .loading{position:fixed;z-index:70;inset:0;background:rgba(255,255,255,.76);display:grid;place-items:center}.loading>div{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 22px;box-shadow:var(--shadow);font-weight:900;color:var(--g)}
@@ -34,6 +34,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 @media(min-width:700px){main{padding:22px}.overview{grid-template-columns:repeat(6,1fr)}.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%);bottom:20px;border-radius:24px}.bottom{left:50%;right:auto;width:620px;transform:translateX(-50%);border:1px solid var(--line);border-radius:20px 20px 0 0}}
 .catalog-gate{border:1px solid #e1c989;background:#fffaf0;border-radius:14px;padding:12px;margin:4px 0 12px;display:grid;gap:8px}.catalog-gate.hidden{display:none}.catalog-gate strong{color:#7a5a00}.catalog-gate small{color:var(--muted);line-height:1.35}.btn:disabled,.scan:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.15)}
 .delete-mini{border:0;background:#fff0f0;color:var(--danger);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:900;white-space:nowrap}.delete-mini:disabled{opacity:.5}.delete-summary{background:#f7f9f8;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:4px}.delete-summary strong{font-size:18px}.danger{background:var(--danger)!important;color:#fff!important}
+.manage-toolbar{display:grid;gap:10px}.manage-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}.manage-list{display:grid;gap:8px}.manage-row{display:grid;grid-template-columns:30px 54px 1fr;gap:10px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px}.manage-row input[type="checkbox"]{width:22px;height:22px;margin-top:4px;accent-color:var(--g)}.manage-row .meta{font-size:11px;color:var(--muted);line-height:1.45}.manage-row .qty{font-weight:900;color:var(--g)}.manage-count{font-size:12px;font-weight:900;color:var(--g)}.manage-sticky{position:sticky;top:68px;z-index:10;background:var(--bg);padding-bottom:8px}
 </style>
 </head>
 <body>
@@ -59,12 +60,26 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
     <button id="saveMappingBtn" class="btn primary big wide" type="submit">＋ Guardar código aquí</button>
   </form>
   <div class="card"><div class="card-head"><div><p class="eyebrow">RACK ACTUAL</p><h2 id="rackTitle">Rack A</h2></div><button id="refreshRack" class="icon">↻</button></div><div id="rackMap" class="rack-map"><div class="empty">Configura el rack para ver su mapa.</div></div></div>
-  <div class="card"><div class="card-head"><div><p class="eyebrow">RECIENTES</p><h2>Últimos registros</h2></div><button id="sync" class="btn secondary">Sincronizar</button></div><div id="recent" class="list"><div class="empty">Sin registros.</div></div></div>
+  <div class="card"><div class="card-head"><div><p class="eyebrow">RECIENTES</p><h2>Últimos 12 registros</h2></div><button id="sync" class="btn secondary">Sincronizar</button></div><div id="recent" class="list"><div class="empty">Sin registros.</div></div></div>
 </section>
 <section id="search" class="view"><div class="heading"><div><p class="eyebrow">LOCALIZADOR</p><h1>¿Dónde está?</h1></div></div><div class="card"><div class="searchbox"><input id="searchInput" type="search" placeholder="Código o descripción"><button id="searchBtn" class="btn primary">Buscar</button></div></div><div id="searchResults" class="results"><div class="empty">Busca un material para ver todas sus ubicaciones.</div></div></section>
 <section id="racks" class="view"><div class="heading"><div><p class="eyebrow">MAPA MAESTRO</p><h1>Racks A–Z</h1></div></div><div id="overview" class="overview"></div></section><section id="inventory" class="view"><div class="heading"><div><p class="eyebrow">CONTEO FÍSICO</p><h1>Inventario capturado</h1></div><span id="inventoryTotal" class="badge ok">0 pzas</span></div><div class="card"><div class="searchbox"><input id="inventorySearch" type="search" placeholder="Filtrar código o descripción"></div><p class="muted">Suma las piezas capturadas por código y conserva el detalle de cada Rack / Posición / Nivel.</p></div><div id="inventoryResults" class="results"><div class="empty">Aún no hay conteos capturados.</div></div></section>
+<section id="manage" class="view">
+  <div class="heading"><div><p class="eyebrow">GESTIÓN</p><h1>Registros activos</h1></div><span id="manageCount" class="badge ok">0 activos</span></div>
+  <div class="manage-sticky">
+    <div class="card manage-toolbar">
+      <div class="searchbox"><input id="manageSearch" type="search" placeholder="Filtrar CME, descripción, rack o capturista"><button id="manageRefresh" class="btn secondary" type="button">Actualizar</button></div>
+      <div class="manage-actions">
+        <label style="display:flex;gap:8px;align-items:center;margin:0"><input id="manageSelectAll" type="checkbox"> <span>Seleccionar visibles</span></label>
+        <button id="manageDeleteSelected" type="button" class="btn danger" disabled>Eliminar seleccionados (0)</button>
+      </div>
+      <div class="muted">Aquí se muestran todos los registros activos, no solo los recientes. Los eliminados dejan de contabilizar, pero permanecen en Sheets con Estado = ELIMINADO.</div>
+    </div>
+  </div>
+  <div id="manageResults" class="manage-list"><div class="empty">Cargando registros…</div></div>
+</section>
 </main>
-<nav class="bottom"><button class="nav active" data-view="capture"><span>⌖</span><small>Capturar</small></button><button class="nav" data-view="search"><span>⌕</span><small>Buscar</small></button><button class="nav" data-view="racks"><span>▦</span><small>Racks</small></button><button class="nav" data-view="inventory"><span>∑</span><small>Inventario</small></button></nav>
+<nav class="bottom"><button class="nav active" data-view="capture"><span>⌖</span><small>Capturar</small></button><button class="nav" data-view="search"><span>⌕</span><small>Buscar</small></button><button class="nav" data-view="racks"><span>▦</span><small>Racks</small></button><button class="nav" data-view="inventory"><span>∑</span><small>Inventario</small></button><button class="nav" data-view="manage"><span>☑</span><small>Gestionar</small></button></nav>
 
 <dialog id="rackDialog"><form method="dialog" class="sheet" id="rackForm"><div class="dialog-head"><div><p class="eyebrow">CONFIGURACIÓN FÍSICA</p><h2 id="rackDialogTitle">Rack A</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">Registra lo que observes; puedes corregirlo después.</p><div class="grid2"><label>Posiciones<input id="rackPositions" type="number" min="1" max="500" inputmode="numeric" value="6"></label><label>Niveles<input id="rackLevels" type="number" min="1" max="30" inputmode="numeric" value="3"></label></div><label>Notas<textarea id="rackNotes" rows="3" placeholder="Ej. nivel 4 solo de P1 a P4…"></textarea></label><div class="dialog-actions"><button value="cancel" class="btn secondary">Cancelar</button><button id="rackSave" type="button" class="btn primary">Guardar rack</button></div></form></dialog>
 
@@ -86,6 +101,7 @@ cfg.gasUrl=DEFAULT_GAS_URL;
 if("apiKey" in cfg) delete cfg.apiKey;
 localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));
 var state={rack:localStorage.getItem("rack")||"A",position:Number(localStorage.getItem("pos")||1),level:Number(localStorage.getItem("level")||1),racks:{},records:[],recent:JSON.parse(localStorage.getItem("rackRecent")||"[]"),pending:JSON.parse(localStorage.getItem("rackPending")||"[]"),deletePending:JSON.parse(localStorage.getItem("rackDeletePending")||"[]"),inventory:JSON.parse(localStorage.getItem("rackInventory")||"[]")};
+var manageRecords=[],manageSelected={};
 var scanStream=null,scanTimer=null;
 var PROD_RESET_VERSION="2026-10-06-empaque-v1";
 function applyProductionReset(){
@@ -433,6 +449,69 @@ function renderInventory(){
  if(!a.length){$("#inventoryResults").innerHTML='<div class="empty">Aún no hay conteos capturados en este dispositivo.</div>';return}
  $("#inventoryResults").innerHTML=a.map(function(g){return '<div class="result"><div style="display:flex;justify-content:space-between;gap:12px"><div><strong>'+esc(g.code)+'</strong><div class="muted">'+esc(g.description||"Sin descripción")+'</div></div><strong style="color:var(--g);font-size:20px">'+g.total.toLocaleString("es-MX")+' pzas</strong></div><div class="where">'+g.locs.map(function(x){return '<span class="pill">Rack '+esc(x.rack)+' · P'+x.position+' · N'+x.level+': '+Number(x.quantity||0).toLocaleString("es-MX")+' pzas'+(x.id?' <button type="button" class="delete-mini" style="padding:3px 6px;margin-left:4px" data-delete-id="'+esc(x.id)+'">×</button>':"")+'</span>'}).join("")+'</div></div>'}).join("");bindDeleteButtons("#inventoryResults")
 }
+function loadManage(){
+ if(!navigator.onLine){$("#manageResults").innerHTML='<div class="empty">Necesitas conexión para cargar todos los registros activos.</div>';return}
+ $("#manageResults").innerHTML='<div class="empty">Cargando registros…</div>';
+ api("records",{},12000).then(function(d){
+   manageRecords=d.records||[];manageSelected={};renderManage()
+ }).catch(function(e){$("#manageResults").innerHTML='<div class="empty">'+esc(e.message||"No se pudieron cargar los registros")+'</div>'})
+}
+function filteredManageRecords(){
+ var q=String($("#manageSearch").value||"").trim().toUpperCase();
+ if(!q)return manageRecords.slice();
+ return manageRecords.filter(function(x){
+   return String(x.code||"").toUpperCase().indexOf(q)>-1||
+          String(x.description||"").toUpperCase().indexOf(q)>-1||
+          String(x.rack||"").toUpperCase().indexOf(q)>-1||
+          String(x.user||"").toUpperCase().indexOf(q)>-1||
+          ("P"+x.position).toUpperCase().indexOf(q)>-1||
+          ("N"+x.level).toUpperCase().indexOf(q)>-1;
+ })
+}
+function updateManageSelectionUI(){
+ var visible=filteredManageRecords(),selectedIds=Object.keys(manageSelected).filter(function(id){return manageSelected[id]});
+ var b=$("#manageDeleteSelected");b.disabled=!selectedIds.length;b.textContent="Eliminar seleccionados ("+selectedIds.length+")";
+ var allVisible=visible.length&&visible.every(function(x){return !!manageSelected[x.id]});
+ $("#manageSelectAll").checked=!!allVisible;$("#manageSelectAll").indeterminate=!allVisible&&visible.some(function(x){return !!manageSelected[x.id]})
+}
+function renderManage(){
+ var a=filteredManageRecords();
+ $("#manageCount").textContent=manageRecords.length+" activos";
+ if(!a.length){$("#manageResults").innerHTML='<div class="empty">No hay registros activos que coincidan.</div>';updateManageSelectionUI();return}
+ $("#manageResults").innerHTML=a.map(function(x){
+   return '<label class="manage-row"><input type="checkbox" class="manage-check" data-manage-id="'+esc(x.id)+'" '+(manageSelected[x.id]?"checked":"")+'><div class="loc">'+esc(x.rack)+'<br><small>P'+x.position+' N'+x.level+'</small></div><div><strong>'+esc(x.code)+'</strong><div class="meta">'+esc(x.description||"Sin descripción")+'</div><div class="meta"><span class="qty">'+Number(x.quantity||0).toLocaleString("es-MX")+' pzas</span>'+(x.user?' · '+esc(x.user):'')+(x.timeLabel?' · '+esc(x.timeLabel):'')+'</div></div></label>'
+ }).join("");
+ document.querySelectorAll(".manage-check").forEach(function(ch){ch.onchange=function(){manageSelected[ch.dataset.manageId]=ch.checked;updateManageSelectionUI()}});
+ updateManageSelectionUI()
+}
+function queueDeleteId(id){
+ var rec=manageRecords.find(function(x){return String(x.id)===String(id)})||findRecordById(id)||{id:id};
+ if(!(state.deletePending||[]).some(function(x){return String(x.id)===String(id)}))state.deletePending.push({id:id,rack:rec.rack||"",position:rec.position||0,level:rec.level||0,code:rec.code||""});
+ removeRecordLocal(id)
+}
+function bulkDeleteSelected(){
+ var ids=Object.keys(manageSelected).filter(function(id){return manageSelected[id]});
+ if(!ids.length)return;
+ if(!confirm("¿Eliminar "+ids.length+" registro(s) seleccionados? Dejarán de contabilizar en racks e inventario."))return;
+ var btn=$("#manageDeleteSelected");btn.disabled=true;btn.textContent="Eliminando "+ids.length+"…";
+ if(!navigator.onLine){
+   ids.forEach(queueDeleteId);saveState();manageRecords=manageRecords.filter(function(x){return ids.indexOf(String(x.id))<0});manageSelected={};renderManage();updateStatus(false,pendingStatusText());toast(ids.length+" eliminación(es) pendientes");return
+ }
+ var batches=[];for(var i=0;i<ids.length;i+=40)batches.push(ids.slice(i,i+40));
+ var deleted=0;
+ function next(){
+   if(!batches.length){
+     ids.forEach(function(id){removeRecordLocal(id)});
+     manageRecords=manageRecords.filter(function(x){return ids.indexOf(String(x.id))<0});manageSelected={};renderManage();
+     bootstrapRecent();refreshRackOverview();loadRack();toast(deleted+" registro(s) eliminados");return
+   }
+   var batch=batches.shift();
+   api("bulkDelete",{ids:batch.join(",")},12000).then(function(d){deleted+=Number(d.deleted)||0;next()}).catch(function(e){
+     batch.concat.apply(batch,batches).forEach(queueDeleteId);batches=[];saveState();manageRecords=manageRecords.filter(function(x){return !manageSelected[String(x.id)]});manageSelected={};renderManage();updateStatus(false,pendingStatusText());toast("Parte quedó pendiente de sincronizar")
+   })
+ }
+ next()
+}
 function openRack(){
  var c=rackCfg(state.rack);$("#rackDialogTitle").textContent="Rack "+state.rack;$("#rackPositions").value=c.positions||6;$("#rackLevels").value=c.levels||3;$("#rackNotes").value=c.notes||"";$("#rackDialog").showModal()
 }
@@ -446,13 +525,13 @@ function saveRack(){
  if(cfg.gasUrl)api("updateRack",p).then(function(){toast("Rack "+p.rack+" actualizado: "+positions+" posiciones · "+levels+" niveles")}).catch(function(){localStorage.setItem("rackCfgPending_"+state.rack,JSON.stringify(p));toast("Rack guardado localmente · pendiente de sincronizar")})
 }
 function openSettings(){var d=$("#operatorDialog");$("#operatorName").value=cfg.user||"";if(d&&!d.open)d.showModal();setTimeout(function(){$("#operatorName").focus()},80)}
-function showView(id){$$(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});$$(".nav").forEach(function(b){b.classList.toggle("active",b.dataset.view===id)});if(id==="racks")renderOverview();if(id==="inventory")renderInventory()}
+function showView(id){$(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});$(".nav").forEach(function(b){b.classList.toggle("active",b.dataset.view===id)});if(id==="racks")renderOverview();if(id==="inventory")renderInventory();if(id==="manage")loadManage()}
 async function scan(){
  if(!("BarcodeDetector" in window)||!navigator.mediaDevices){return toast("Este navegador no soporta escaneo directo")}
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else{api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"Sin conexión")})}});window.addEventListener("online",function(){updateStatus(false,"Reconectando…");api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"GAS sin respuesta")})});setInterval(function(){if(navigator.onLine&&(((state.pending||[]).length)||((state.deletePending||[]).length))){api("ping",{},4000).then(function(){syncPending()}).catch(function(){})}},20000);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=20",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$("#manageSearch").oninput=renderManage;$("#manageRefresh").onclick=loadManage;$("#manageSelectAll").onchange=function(){var checked=this.checked;filteredManageRecords().forEach(function(x){manageSelected[x.id]=checked});renderManage()};$("#manageDeleteSelected").onclick=bulkDeleteSelected;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else{api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"Sin conexión")})}});window.addEventListener("online",function(){updateStatus(false,"Reconectando…");api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"GAS sin respuesta")})});setInterval(function(){if(navigator.onLine&&(((state.pending||[]).length)||((state.deletePending||[]).length))){api("ping",{},4000).then(function(){syncPending()}).catch(function(){})}},20000);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=21",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
