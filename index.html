@@ -64,7 +64,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 </main>
 <nav class="bottom"><button class="nav active" data-view="capture"><span>⌖</span><small>Capturar</small></button><button class="nav" data-view="search"><span>⌕</span><small>Buscar</small></button><button class="nav" data-view="racks"><span>▦</span><small>Racks</small></button><button class="nav" data-view="inventory"><span>∑</span><small>Inventario</small></button></nav>
 
-<dialog id="rackDialog"><form method="dialog" class="sheet" id="rackForm"><div class="dialog-head"><div><p class="eyebrow">CONFIGURACIÓN FÍSICA</p><h2 id="rackDialogTitle">Rack A</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">Registra lo que observes; puedes corregirlo después.</p><div class="grid2"><label>Posiciones<input id="rackPositions" type="number" min="1" max="50" inputmode="numeric" value="6"></label><label>Niveles<input id="rackLevels" type="number" min="1" max="10" inputmode="numeric" value="3"></label></div><label>Notas<textarea id="rackNotes" rows="3" placeholder="Ej. nivel 4 solo de P1 a P4…"></textarea></label><div class="dialog-actions"><button value="cancel" class="btn secondary">Cancelar</button><button id="rackSave" value="default" class="btn primary">Guardar rack</button></div></form></dialog>
+<dialog id="rackDialog"><form method="dialog" class="sheet" id="rackForm"><div class="dialog-head"><div><p class="eyebrow">CONFIGURACIÓN FÍSICA</p><h2 id="rackDialogTitle">Rack A</h2></div><button value="cancel" class="icon">×</button></div><p class="muted">Registra lo que observes; puedes corregirlo después.</p><div class="grid2"><label>Posiciones<input id="rackPositions" type="number" min="1" max="500" inputmode="numeric" value="6"></label><label>Niveles<input id="rackLevels" type="number" min="1" max="30" inputmode="numeric" value="3"></label></div><label>Notas<textarea id="rackNotes" rows="3" placeholder="Ej. nivel 4 solo de P1 a P4…"></textarea></label><div class="dialog-actions"><button value="cancel" class="btn secondary">Cancelar</button><button id="rackSave" type="button" class="btn primary">Guardar rack</button></div></form></dialog>
 
 <dialog id="operatorDialog"><form method="dialog" class="sheet" id="operatorForm"><div class="dialog-head"><div><p class="eyebrow">IDENTIFICACIÓN</p><h2>Nombre del capturista</h2></div><button type="button" id="closeOperator" class="icon">×</button></div><p class="muted">La conexión con Oleolab ya está configurada. En cada celular o navegador solo registra el nombre de la persona que realizará la captura.</p><label>Capturista / dispositivo<input id="operatorName" type="text" required autocomplete="name" placeholder="Ej. Artemio"></label><button class="btn primary big wide" type="submit">Guardar y continuar</button></form></dialog>
 
@@ -202,6 +202,15 @@ function clamp(){
  saveState();updateLocation()
 }
 function updateLocation(){$("#pos").value=state.position;$("#level").value=state.level;$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level;$("#rackTitle").textContent="Rack "+state.rack}
+function syncLocationFromInputs(){
+ var p=parseInt($("#pos").value,10),n=parseInt($("#level").value,10);
+ if(Number.isFinite(p)&&p>=1)state.position=p;
+ if(Number.isFinite(n)&&n>=1)state.level=n;
+ saveState();
+ $("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level;
+ $("#rackTitle").textContent="Rack "+state.rack;
+ return {rack:state.rack,position:state.position,level:state.level};
+}
 function step(dir){
  var c=rackCfg(state.rack),pmax=c.positions||Math.max(6,state.position),nmax=c.levels||Math.max(3,state.level);
  if(dir>0){state.level++;if(state.level>nmax){state.level=1;state.position++;if(state.position>pmax)state.position=1}}
@@ -243,16 +252,17 @@ function newClientId(){return "dev-"+Date.now()+"-"+Math.random().toString(36).s
 function clearCapture(){ $("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";$("#code").focus() }
 function saveMapping(){
  if(!ensureOperator())return;
+ var loc=syncLocationFromInputs();
  applyCatalogCode(true);
  var code=$("#code").value.trim().toUpperCase();if(!code)return toast("Escribe o escanea un código");
  var qty=Number($("#qty").value);if(!Number.isFinite(qty)||qty<0)return toast("Captura la cantidad en piezas");
- var p={clientId:newClientId(),rack:state.rack,position:state.position,level:state.level,code:code,description:$("#desc").value.trim(),quantity:qty,notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
+ var p={clientId:newClientId(),rack:loc.rack,position:loc.position,level:loc.level,code:code,description:$("#desc").value.trim(),quantity:qty,notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
  var rec=localRecord(p);state.recent.unshift(rec);state.records.push(rec);state.inventory.unshift(rec);
  if(!navigator.onLine){state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · se sincronizará");return}
  loading(true);
  api("saveMapping",p).then(function(d){
    rec.id=d.id||rec.id;rec.timeLabel="ahora";saveState();renderRecent();renderRackMap(state.records);renderInventory();clearCapture();
-   toast(d.duplicate?"Ya estaba registrado en esta ubicación":"Guardado: "+qty+" pzas");
+   toast(d.duplicate?("Ya existía en "+p.rack+" · P"+p.position+" · N"+p.level):("Guardado "+p.rack+" · P"+p.position+" · N"+p.level+" · "+qty+" pzas"));
  }).catch(function(){
    state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · pendiente de sincronizar");
  }).finally(function(){loading(false)})
@@ -285,8 +295,13 @@ function openRack(){
  var c=rackCfg(state.rack);$("#rackDialogTitle").textContent="Rack "+state.rack;$("#rackPositions").value=c.positions||6;$("#rackLevels").value=c.levels||3;$("#rackNotes").value=c.notes||"";$("#rackDialog").showModal()
 }
 function saveRack(){
- var p={rack:state.rack,positions:Number($("#rackPositions").value),levels:Number($("#rackLevels").value),notes:$("#rackNotes").value.trim()};state.racks[state.rack]=p;renderOverview();clamp();renderRackMap(state.records);
- if(cfg.gasUrl)api("updateRack",p).then(function(){toast("Rack actualizado")}).catch(function(){localStorage.setItem("rackCfgPending_"+state.rack,JSON.stringify(p));toast("Rack guardado localmente")})
+ var positions=parseInt($("#rackPositions").value,10),levels=parseInt($("#rackLevels").value,10);
+ if(!Number.isFinite(positions)||positions<1||positions>500)return toast("Posiciones: captura un valor entre 1 y 500");
+ if(!Number.isFinite(levels)||levels<1||levels>30)return toast("Niveles: captura un valor entre 1 y 30");
+ var p={rack:state.rack,positions:positions,levels:levels,notes:$("#rackNotes").value.trim()};
+ state.racks[state.rack]=p;renderOverview();clamp();renderRackMap(state.records);
+ if($("#rackDialog").open)$("#rackDialog").close();
+ if(cfg.gasUrl)api("updateRack",p).then(function(){toast("Rack "+p.rack+" actualizado: "+positions+" posiciones · "+levels+" niveles")}).catch(function(){localStorage.setItem("rackCfgPending_"+state.rack,JSON.stringify(p));toast("Rack guardado localmente · pendiente de sincronizar")})
 }
 function openSettings(){var d=$("#operatorDialog");$("#operatorName").value=cfg.user||"";if(d&&!d.open)d.showModal();setTimeout(function(){$("#operatorName").focus()},80)}
 function showView(id){$$(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});$$(".nav").forEach(function(b){b.classList.toggle("active",b.dataset.view===id)});if(id==="racks")renderOverview();if(id==="inventory")renderInventory()}
@@ -295,7 +310,7 @@ async function scan(){
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").onchange=function(){state.position=Number(this.value)||1;clamp()};$("#level").onchange=function(){state.level=Number(this.value)||1;clamp()};$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
