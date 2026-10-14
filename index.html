@@ -63,7 +63,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
   <div class="card"><div class="card-head"><div><p class="eyebrow">RECIENTES</p><h2>Últimos 12 registros</h2></div><button id="sync" class="btn secondary">Sincronizar</button></div><div id="recent" class="list"><div class="empty">Sin registros.</div></div></div>
 </section>
 <section id="search" class="view"><div class="heading"><div><p class="eyebrow">LOCALIZADOR</p><h1>¿Dónde está?</h1></div></div><div class="card"><div class="searchbox"><input id="searchInput" type="search" placeholder="Código o descripción"><button id="searchBtn" class="btn primary">Buscar</button></div></div><div id="searchResults" class="results"><div class="empty">Busca un material para ver todas sus ubicaciones.</div></div></section>
-<section id="racks" class="view"><div class="heading"><div><p class="eyebrow">MAPA MAESTRO</p><h1>Racks A–Z</h1></div></div><div id="overview" class="overview"></div></section><section id="inventory" class="view"><div class="heading"><div><p class="eyebrow">CONTEO FÍSICO</p><h1>Inventario capturado</h1></div><span id="inventoryTotal" class="badge ok">0 pzas</span></div><div class="card"><div class="searchbox"><input id="inventorySearch" type="search" placeholder="Filtrar código o descripción"></div><p class="muted">Suma las piezas capturadas por código y conserva el detalle de cada Rack / Posición / Nivel.</p></div><div id="inventoryResults" class="results"><div class="empty">Aún no hay conteos capturados.</div></div></section>
+<section id="racks" class="view"><div class="heading"><div><p class="eyebrow">MAPA MAESTRO</p><h1>Racks A–Z</h1></div></div><div id="overview" class="overview"></div></section><section id="inventory" class="view"><div class="heading"><div><p class="eyebrow">CONTEO FÍSICO</p><h1>Inventario total</h1></div><span id="inventoryTotal" class="badge ok">0 pzas</span></div><div class="card"><div class="searchbox"><input id="inventorySearch" type="search" placeholder="Filtrar código o descripción"><button id="downloadInventory" type="button" class="btn primary">Descargar CSV</button></div><p class="muted">Muestra el inventario activo consolidado de todos los dispositivos. Se actualiza automáticamente desde Sheets.</p><small id="inventorySyncLabel" class="muted">Sincronizando…</small></div><div id="inventoryResults" class="results"><div class="empty">Cargando inventario total…</div></div></section>
 <section id="manage" class="view">
   <div class="heading"><div><p class="eyebrow">GESTIÓN</p><h1>Registros activos</h1></div><span id="manageCount" class="badge ok">0 activos</span></div>
   <div class="manage-sticky">
@@ -101,7 +101,7 @@ cfg.gasUrl=DEFAULT_GAS_URL;
 if("apiKey" in cfg) delete cfg.apiKey;
 localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));
 var state={rack:localStorage.getItem("rack")||"A",position:Number(localStorage.getItem("pos")||1),level:Number(localStorage.getItem("level")||1),racks:{},records:[],recent:JSON.parse(localStorage.getItem("rackRecent")||"[]"),pending:JSON.parse(localStorage.getItem("rackPending")||"[]"),deletePending:JSON.parse(localStorage.getItem("rackDeletePending")||"[]"),inventory:JSON.parse(localStorage.getItem("rackInventory")||"[]")};
-var manageRecords=[],manageSelected={};
+var manageRecords=[],manageSelected={},autoSyncBusy=false,lastAutoSyncAt=0;
 var scanStream=null,scanTimer=null;
 var PROD_RESET_VERSION="2026-10-06-empaque-v1";
 function applyProductionReset(){
@@ -209,12 +209,67 @@ function applyActiveRecordsToRackState(records){
  state.racks=by;
  renderOverview();
 }
-function refreshActiveRackCounts(){
- if(!cfg.gasUrl||!navigator.onLine)return Promise.resolve();
- return api("records",{},12000).then(function(d){
-   applyActiveRecordsToRackState(d.records||[]);
+function applyServerRecords(records,opts){
+ records=records||[];
+ state.inventory=records.slice();
+ state.recent=records.slice(0,20);
+ state.records=records.filter(function(x){return String(x.rack||"").toUpperCase()===String(state.rack||"").toUpperCase()});
+ applyActiveRecordsToRackState(records);
+ renderRecent();renderRackMap(state.records);renderInventory();
+ if(opts&&opts.manage){
+   manageRecords=records.slice();
+   Object.keys(manageSelected).forEach(function(id){if(!manageRecords.some(function(x){return String(x.id)===String(id)}))delete manageSelected[id]});
+   renderManage()
+ }
+ var q=$("#searchInput")&&$("#searchInput").value.trim();
+ if(q){
+   var qu=q.toUpperCase();
+   lastSearchResults=records.filter(function(x){return String(x.code||"").toUpperCase().indexOf(qu)>-1||String(x.description||"").toUpperCase().indexOf(qu)>-1});
+   if(document.querySelector("#search.view.active"))renderSearch(lastSearchResults)
+ }
+ saveState();
+ var lbl=$("#inventorySyncLabel");if(lbl)lbl.textContent="Actualizado "+new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+}
+function refreshAllDevicesData(force){
+ if(autoSyncBusy||!cfg.gasUrl||!navigator.onLine)return Promise.resolve();
+ if(!force&&document.hidden)return Promise.resolve();
+ autoSyncBusy=true;
+ return api("records",{},9000).then(function(d){
+   lastAutoSyncAt=Date.now();
+   applyServerRecords(d.records||[],{manage:!!document.querySelector("#manage.view.active")});
+   updateStatus(true,pendingStatusText());
    return d.records||[]
- }).catch(function(){})
+ }).catch(function(e){
+   if(force)toast(e.message||"No se pudo sincronizar");
+ }).finally(function(){autoSyncBusy=false})
+}
+function refreshActiveRackCounts(){return refreshAllDevicesData(true)}
+function csvCell(v){
+ var s=String(v==null?"":v).replace(/"/g,'""');
+ return '"'+s+'"'
+}
+function downloadInventoryCsv(){
+ if(!navigator.onLine)return toast("Necesitas conexión para descargar el inventario total");
+ var b=$("#downloadInventory");b.disabled=true;b.textContent="Preparando…";
+ api("records",{},12000).then(function(d){
+   var rows=d.records||[];
+   if(!rows.length)return toast("No hay registros activos para descargar");
+   var totals={};
+   rows.forEach(function(x){var k=String(x.code||"").toUpperCase();totals[k]=(totals[k]||0)+(Number(x.quantity)||0)});
+   var header=["CodigoMaterial","Descripcion","TotalPiezasCodigo","Rack","Posicion","Nivel","CantidadPiezas","Usuario","FechaHora","Observaciones","ID"];
+   var lines=[header.map(csvCell).join(",")];
+   rows.slice().sort(function(a,b){return String(a.code).localeCompare(String(b.code))||String(a.rack).localeCompare(String(b.rack))||Number(a.position)-Number(b.position)||Number(a.level)-Number(b.level)}).forEach(function(x){
+     lines.push([
+       x.code||"",x.description||"",totals[String(x.code||"").toUpperCase()]||0,x.rack||"",x.position||0,x.level||0,
+       Number(x.quantity)||0,x.user||"",x.date||x.timeLabel||"",x.notes||"",x.id||""
+     ].map(csvCell).join(","))
+   });
+   var blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+   var url=URL.createObjectURL(blob),a=document.createElement("a"),now=new Date(),pad=function(n){return String(n).padStart(2,"0")};
+   a.href=url;a.download="Inventario_Total_Oleolab_"+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+"_"+pad(now.getHours())+pad(now.getMinutes())+".csv";
+   document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1500);
+   toast("Inventario total descargado")
+ }).catch(function(e){toast(e.message||"No se pudo descargar")}).finally(function(){b.disabled=false;b.textContent="Descargar CSV"})
 }
 function updateStatus(ok,text){var b=$("#status");b.textContent=text;b.className="badge "+(ok?"ok":"off")}
 function pendingStatusText(){
@@ -309,7 +364,7 @@ function bootstrap(){
  }).then(function(d){
    (d.racks||[]).forEach(function(r){state.racks[r.rack]=r});
    (d.catalog||[]).forEach(function(m){if(m&&m.code)MATERIAL_CATALOG[String(m.code).toUpperCase()]=m.description||""});
-   initCatalog();state.recent=d.recent||state.recent;renderRecent();clamp();loadRack();refreshActiveRackCounts()
+   initCatalog();state.recent=d.recent||state.recent;renderRecent();clamp();loadRack();refreshAllDevicesData(true)
  }).catch(function(e){
    var m=friendlyConnectionError(e&&e.message);updateStatus(false,m);$("#status").title=(e&&e.message)||m
  })
@@ -353,7 +408,7 @@ function confirmDeleteRecord(){
  }
  api("deleteMapping",{id:id}).then(function(){
    removeRecordLocal(id);pendingDeleteRecord=null;$("#deleteDialog").close();toast("Registro eliminado");
-   bootstrapRecent();refreshActiveRackCounts();loadRack();var q=$("#searchInput").value.trim();if(q)search()
+   bootstrapRecent();refreshAllDevicesData(true);var q=$("#searchInput").value.trim();if(q)search()
  }).catch(function(e){toast(e.message||"No se pudo eliminar")}).finally(function(){deleteInFlight=false;b.disabled=false;b.textContent="Eliminar registro"})
 }
 
@@ -423,7 +478,7 @@ function saveMapping(){
      toast("Ya existía en "+p.rack+" · P"+p.position+" · N"+p.level);return
    }
    rec.id=d.id||rec.id;rec.timeLabel="ahora";saveState();renderRecent();renderRackMap(state.records);renderInventory();clearCapture();
-   toast("Guardado "+p.rack+" · P"+p.position+" · N"+p.level+" · "+qty+" pzas");
+   toast("Guardado "+p.rack+" · P"+p.position+" · N"+p.level+" · "+qty+" pzas");refreshAllDevicesData(true);
  }).catch(function(e){
    if(String(e&&e.message||"").indexOf("MATERIAL_NOT_IN_CATALOG")>-1){showCatalogGate();toast("Material no registrado en catálogo")}
    else{state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · pendiente de sincronizar")}
@@ -444,7 +499,7 @@ function syncPending(){
  function syncSaves(){
    if(!state.pending.length){
      saveState();updateStatus(true,"Conectado");if(doneCount)toast(doneCount+" cambio(s) sincronizados");
-     bootstrapRecent();refreshActiveRackCounts();loadRack();return
+     bootstrapRecent();refreshAllDevicesData(true);return
    }
    var p=state.pending[0];
    api("saveMapping",p,9000).then(function(){
@@ -476,7 +531,7 @@ function renderInventory(){
  var q=($("#inventorySearch")&&$("#inventorySearch").value||"").trim().toUpperCase(),src=state.inventory||[],groups={};
  src.forEach(function(x){var key=String(x.code||"").toUpperCase();if(!key)return;if(q&&key.indexOf(q)<0&&String(x.description||"").toUpperCase().indexOf(q)<0)return;if(!groups[key])groups[key]={code:key,description:x.description||"",total:0,locs:[]};groups[key].total+=Number(x.quantity)||0;groups[key].locs.push(x)});
  var a=Object.keys(groups).map(function(k){return groups[k]}).sort(function(a,b){return a.code.localeCompare(b.code)}),grand=a.reduce(function(s,x){return s+x.total},0);if($("#inventoryTotal"))$("#inventoryTotal").textContent=grand.toLocaleString("es-MX")+" pzas";
- if(!a.length){$("#inventoryResults").innerHTML='<div class="empty">Aún no hay conteos capturados en este dispositivo.</div>';return}
+ if(!a.length){$("#inventoryResults").innerHTML='<div class="empty">No hay registros activos en el inventario.</div>';return}
  $("#inventoryResults").innerHTML=a.map(function(g){return '<div class="result"><div style="display:flex;justify-content:space-between;gap:12px"><div><strong>'+esc(g.code)+'</strong><div class="muted">'+esc(g.description||"Sin descripción")+'</div></div><strong style="color:var(--g);font-size:20px">'+g.total.toLocaleString("es-MX")+' pzas</strong></div><div class="where">'+g.locs.map(function(x){return '<span class="pill">Rack '+esc(x.rack)+' · P'+x.position+' · N'+x.level+': '+Number(x.quantity||0).toLocaleString("es-MX")+' pzas'+(x.id?' <button type="button" class="delete-mini" style="padding:3px 6px;margin-left:4px" data-delete-id="'+esc(x.id)+'">×</button>':"")+'</span>'}).join("")+'</div></div>'}).join("");bindDeleteButtons("#inventoryResults")
 }
 function loadManage(){
@@ -533,7 +588,7 @@ function bulkDeleteSelected(){
    if(!batches.length){
      ids.forEach(function(id){removeRecordLocal(id)});
      manageRecords=manageRecords.filter(function(x){return ids.indexOf(String(x.id))<0});manageSelected={};renderManage();
-     bootstrapRecent();refreshRackOverview();loadRack();toast(deleted+" registro(s) eliminados");return
+     bootstrapRecent();refreshAllDevicesData(true);toast(deleted+" registro(s) eliminados");return
    }
    var batch=batches.shift();
    api("bulkDelete",{ids:batch.join(",")},12000).then(function(d){deleted+=Number(d.deleted)||0;next()}).catch(function(e){
@@ -555,13 +610,13 @@ function saveRack(){
  if(cfg.gasUrl)api("updateRack",p).then(function(){toast("Rack "+p.rack+" actualizado: "+positions+" posiciones · "+levels+" niveles")}).catch(function(){localStorage.setItem("rackCfgPending_"+state.rack,JSON.stringify(p));toast("Rack guardado localmente · pendiente de sincronizar")})
 }
 function openSettings(){var d=$("#operatorDialog");$("#operatorName").value=cfg.user||"";if(d&&!d.open)d.showModal();setTimeout(function(){$("#operatorName").focus()},80)}
-function showView(id){document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});document.querySelectorAll(".nav").forEach(function(b){b.classList.toggle("active",b.dataset.view===id)});if(id==="racks")renderOverview();if(id==="inventory")renderInventory();if(id==="manage")loadManage()}
+function showView(id){document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("active",v.id===id)});document.querySelectorAll(".nav").forEach(function(b){b.classList.toggle("active",b.dataset.view===id)});if(id==="racks"){renderOverview();refreshAllDevicesData(false)}if(id==="inventory"){renderInventory();refreshAllDevicesData(true)}if(id==="manage")loadManage()}
 async function scan(){
  if(!("BarcodeDetector" in window)||!navigator.mediaDevices){return toast("Este navegador no soporta escaneo directo")}
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});document.querySelectorAll("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$("#manageSearch").oninput=renderManage;$("#manageRefresh").onclick=loadManage;$("#manageSelectAll").onchange=function(){var checked=this.checked;filteredManageRecords().forEach(function(x){manageSelected[x.id]=checked});renderManage()};$("#manageDeleteSelected").onclick=bulkDeleteSelected;document.querySelectorAll(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else{api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"Sin conexión")})}});window.addEventListener("online",function(){updateStatus(false,"Reconectando…");api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"GAS sin respuesta")})});setInterval(function(){if(navigator.onLine&&(((state.pending||[]).length)||((state.deletePending||[]).length))){api("ping",{},4000).then(function(){syncPending()}).catch(function(){})}},20000);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=23",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});document.querySelectorAll("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$("#downloadInventory").onclick=downloadInventoryCsv;$("#manageSearch").oninput=renderManage;$("#manageRefresh").onclick=loadManage;$("#manageSelectAll").onchange=function(){var checked=this.checked;filteredManageRecords().forEach(function(x){manageSelected[x.id]=checked});renderManage()};$("#manageDeleteSelected").onclick=bulkDeleteSelected;document.querySelectorAll(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else{api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending();refreshAllDevicesData(true)}).catch(function(){updateStatus(false,"Sin conexión")})}});window.addEventListener("online",function(){updateStatus(false,"Reconectando…");api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending();refreshAllDevicesData(true)}).catch(function(){updateStatus(false,"GAS sin respuesta")})});setInterval(function(){if(navigator.onLine&&(((state.pending||[]).length)||((state.deletePending||[]).length))){api("ping",{},4000).then(function(){syncPending()}).catch(function(){})}},20000);setInterval(function(){if(navigator.onLine&&!document.hidden){refreshAllDevicesData(false)}},8000);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=24",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
