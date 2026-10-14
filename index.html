@@ -32,6 +32,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 .loading{position:fixed;z-index:70;inset:0;background:rgba(255,255,255,.76);display:grid;place-items:center}.loading>div{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 22px;box-shadow:var(--shadow);font-weight:900;color:var(--g)}
 .scanner{position:absolute;inset:0;background:#07130e;color:#fff;padding:16px}.scanner video{width:100%;height:70vh;object-fit:cover;border-radius:18px;margin-top:12px}.scanline{position:absolute;left:12%;right:12%;top:42%;height:2px;background:var(--lime);box-shadow:0 0 14px var(--lime)}
 @media(min-width:700px){main{padding:22px}.overview{grid-template-columns:repeat(6,1fr)}.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%);bottom:20px;border-radius:24px}.bottom{left:50%;right:auto;width:620px;transform:translateX(-50%);border:1px solid var(--line);border-radius:20px 20px 0 0}}
+.catalog-gate{border:1px solid #e1c989;background:#fffaf0;border-radius:14px;padding:12px;margin:4px 0 12px;display:grid;gap:8px}.catalog-gate strong{color:#7a5a00}.catalog-gate small{color:var(--muted);line-height:1.35}.btn:disabled,.scan:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.15)}
 </style>
 </head>
 <body>
@@ -51,10 +52,10 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
   </div>
   <form id="mapForm" class="card">
     <div class="code-row"><label>Código o descripción<input id="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" list="materialCodes" placeholder="Escanea CME o descripción"><datalist id="materialCodes"></datalist><small class="muted" style="display:block;margin-top:6px">Puedes escribir o escanear el CME o la descripción. La app identifica coincidencias mayores al 90% y coloca el CME correcto.</small></label><button id="scan" type="button" class="scan">▣<span>Escanear</span></button></div>
-    <label>Descripción<input id="desc" autocomplete="off" placeholder="Opcional; se completa si ya existe"></label><label>Cantidad inventariada (piezas)<input id="qty" type="number" min="0" step="1" inputmode="numeric" required placeholder="Ej. 145"></label>
+    <label>Descripción<input id="desc" autocomplete="off" placeholder="Se completa si ya existe"></label><div id="catalogGate" class="catalog-gate hidden"><strong>🔒 Material no registrado en catálogo</strong><small>Para continuar, captura el código y la descripción. Se dará de alta automáticamente como <b>Material de empaque</b> y quedará activo.</small><button id="addCatalogBtn" type="button" class="btn secondary wide">Registrar material en catálogo</button></div><label>Cantidad inventariada (piezas)<input id="qty" type="number" min="0" step="1" inputmode="numeric" required placeholder="Ej. 145"></label>
     <label>Observaciones<textarea id="notes" rows="2" placeholder="Ej. costado derecho, caja superior…"></textarea></label>
     <div class="keep"><span>Después de guardar</span><strong>Conservar Rack / Posición / Nivel</strong></div>
-    <button class="btn primary big wide" type="submit">＋ Guardar código aquí</button>
+    <button id="saveMappingBtn" class="btn primary big wide" type="submit">＋ Guardar código aquí</button>
   </form>
   <div class="card"><div class="card-head"><div><p class="eyebrow">RACK ACTUAL</p><h2 id="rackTitle">Rack A</h2></div><button id="refreshRack" class="icon">↻</button></div><div id="rackMap" class="rack-map"><div class="empty">Configura el rack para ver su mapa.</div></div></div>
   <div class="card"><div class="card-head"><div><p class="eyebrow">RECIENTES</p><h2>Últimos registros</h2></div><button id="sync" class="btn secondary">Sincronizar</button></div><div id="recent" class="list"><div class="empty">Sin registros.</div></div></div>
@@ -250,22 +251,69 @@ function bootstrap(){
 function localRecord(p){return{id:p.clientId||("local-"+Date.now()),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",quantity:Number(p.quantity)||0,notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
 function newClientId(){return "dev-"+Date.now()+"-"+Math.random().toString(36).slice(2,10)}
 function clearCapture(){ $("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";$("#code").focus() }
+var saveInFlight=false,catalogInFlight=false;
+function setSaveBusy(v){
+ saveInFlight=!!v;
+ var b=$("#saveMappingBtn");
+ if(b){b.disabled=!!v;b.textContent=v?"Guardando…":"＋ Guardar código aquí"}
+}
+function showCatalogGate(){
+ var g=$("#catalogGate");if(g)g.classList.remove("hidden");
+}
+function hideCatalogGate(){
+ var g=$("#catalogGate");if(g)g.classList.add("hidden");
+}
+function exactCatalogMaterial(code){
+ code=String(code||"").trim().toUpperCase();
+ return MATERIAL_CATALOG[code]?{code:code,description:MATERIAL_CATALOG[code]}:null;
+}
+function registerCatalogMaterial(){
+ if(catalogInFlight)return;
+ var code=String($("#code").value||"").trim().toUpperCase(),description=String($("#desc").value||"").trim();
+ if(!code)return toast("Captura el código del material");
+ if(!description)return toast("Captura la descripción del material");
+ if(!navigator.onLine)return toast("Conéctate a internet para registrar un material nuevo");
+ catalogInFlight=true;
+ var b=$("#addCatalogBtn");if(b){b.disabled=true;b.textContent="Registrando…"}
+ api("addMaterial",{code:code,description:description}).then(function(d){
+   var m=d.material||{code:code,description:description};
+   MATERIAL_CATALOG[String(m.code||code).toUpperCase()]=m.description||description;
+   initCatalog();$("#code").value=String(m.code||code).toUpperCase();$("#desc").value=m.description||description;$("#desc").dataset.catalogFilled="1";
+   hideCatalogGate();toast("Material registrado en catálogo");
+ }).catch(function(e){toast(e.message||"No se pudo registrar el material")}).finally(function(){
+   catalogInFlight=false;if(b){b.disabled=false;b.textContent="Registrar material en catálogo"}
+ })
+}
 function saveMapping(){
+ if(saveInFlight)return;
  if(!ensureOperator())return;
+ setSaveBusy(true);
  var loc=syncLocationFromInputs();
  applyCatalogCode(true);
- var code=$("#code").value.trim().toUpperCase();if(!code)return toast("Escribe o escanea un código");
- var qty=Number($("#qty").value);if(!Number.isFinite(qty)||qty<0)return toast("Captura la cantidad en piezas");
- var p={clientId:newClientId(),rack:loc.rack,position:loc.position,level:loc.level,code:code,description:$("#desc").value.trim(),quantity:qty,notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
+ var code=$("#code").value.trim().toUpperCase();
+ if(!code){setSaveBusy(false);return toast("Escribe o escanea un código")}
+ var qty=Number($("#qty").value);
+ if(!Number.isFinite(qty)||qty<0){setSaveBusy(false);return toast("Captura la cantidad en piezas")}
+ var material=exactCatalogMaterial(code);
+ if(!material){
+   showCatalogGate();setSaveBusy(false);
+   return toast("Material no registrado · completa código y descripción")
+ }
+ hideCatalogGate();
+ $("#desc").value=material.description;
+ var p={clientId:newClientId(),rack:loc.rack,position:loc.position,level:loc.level,code:code,description:material.description,quantity:qty,notes:$("#notes").value.trim(),user:cfg.user||"Celular"};
  var rec=localRecord(p);state.recent.unshift(rec);state.records.push(rec);state.inventory.unshift(rec);
- if(!navigator.onLine){state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · se sincronizará");return}
+ if(!navigator.onLine){
+   state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();setSaveBusy(false);toast("Guardado offline · se sincronizará");return
+ }
  loading(true);
  api("saveMapping",p).then(function(d){
    rec.id=d.id||rec.id;rec.timeLabel="ahora";saveState();renderRecent();renderRackMap(state.records);renderInventory();clearCapture();
    toast(d.duplicate?("Ya existía en "+p.rack+" · P"+p.position+" · N"+p.level):("Guardado "+p.rack+" · P"+p.position+" · N"+p.level+" · "+qty+" pzas"));
- }).catch(function(){
-   state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · pendiente de sincronizar");
- }).finally(function(){loading(false)})
+ }).catch(function(e){
+   if(String(e&&e.message||"").indexOf("MATERIAL_NOT_IN_CATALOG")>-1){showCatalogGate();toast("Material no registrado en catálogo")}
+   else{state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · pendiente de sincronizar")}
+ }).finally(function(){loading(false);setSaveBusy(false)})
 }
 function syncPending(){
  if(!state.pending.length||!cfg.gasUrl||!navigator.onLine)return;
@@ -310,7 +358,7 @@ async function scan(){
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js").catch(function(){});
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
