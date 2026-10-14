@@ -13,13 +13,14 @@ function doGet(e) {
   try {
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '2.2.0', time: new Date().toISOString() };
+    if (action === 'ping') data = { ok: true, version: '2.3.0', time: new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
     else if (action === 'recent') data = { ok: true, recent: recent_(20) };
     else if (action === 'catalog') data = { ok: true, catalog: catalog_() };
     else if (action === 'lookupMaterial') data = { ok: true, material: lookupMaterial_(p.code || p.q || p.description || '') };
+    else if (action === 'addMaterial') data = addMaterial_(p);
     else if (action === 'saveMapping') data = saveMapping_(p);
     else if (action === 'updateRack') data = updateRack_(p);
     else if (action === 'deleteMapping') data = deleteMapping_(p);
@@ -36,6 +37,7 @@ function doPost(e) {
     const action = String(body.action || '');
     let data;
     if (action === 'saveMapping') data = saveMapping_(body);
+    else if (action === 'addMaterial') data = addMaterial_(body);
     else if (action === 'updateRack') data = updateRack_(body);
     else if (action === 'deleteMapping') data = deleteMapping_(body);
     else data = { ok: false, error: 'Acción POST no reconocida' };
@@ -134,27 +136,34 @@ function saveMapping_(b) {
   if (!position || !level) throw new Error('Posición y nivel son obligatorios');
   if (!code) throw new Error('Código requerido');
 
+  const material = catalogByCode_(code);
+  if (!material) throw new Error('MATERIAL_NOT_IN_CATALOG');
+
   const cfg = racks_().find(function(x){return x.rack===rack});
   if (cfg && cfg.positions && position > cfg.positions) throw new Error('Posición fuera del rango configurado');
   if (cfg && cfg.levels && level > cfg.levels) throw new Error('Nivel fuera del rango configurado');
 
-  const sh = sheet_(SHEETS.MAPEO), last = sh.getLastRow();
-  if (last >= 2) {
-    const vals = sh.getRange(2,3,last-1,9).getValues();
-    const dup = vals.some(function(r){
-      return upper_(r[0])===rack && Number(r[1])===position && Number(r[2])===level && upper_(r[3])===code && upper_(r[8]||'ACTIVO')!=='ELIMINADO';
-    });
-    if (dup) return { ok:true, duplicate:true, message:'Ese código ya está mapeado en la misma ubicación' };
-  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sh = sheet_(SHEETS.MAPEO), last = sh.getLastRow();
+    if (last >= 2) {
+      const vals = sh.getRange(2,3,last-1,9).getValues();
+      const dup = vals.some(function(r){
+        return upper_(r[0])===rack && Number(r[1])===position && Number(r[2])===level && upper_(r[3])===code && upper_(r[8]||'ACTIVO')!=='ELIMINADO';
+      });
+      if (dup) return { ok:true, duplicate:true, message:'Ese código ya está mapeado en la misma ubicación', rack:rack, position:position, level:level, code:code };
+    }
 
-  const quantity = Math.max(0, Number(b.quantity)||0);
-  let description = clean_(b.description);
-  if (!description) description = catalogDescription_(code);
-  const id = Utilities.getUuid();
-  sh.appendRow([id,new Date(),rack,position,level,code,description,quantity,clean_(b.notes),clean_(b.user),'ACTIVO']);
-  if (description) upsertCatalog_(code,description);
-  touchRackFromMapping_(rack,position,level);
-  return { ok:true, id:id, rack:rack, position:position, level:level, code:code, quantity:quantity };
+    const quantity = Math.max(0, Number(b.quantity)||0);
+    const description = material.description;
+    const id = Utilities.getUuid();
+    sh.appendRow([id,new Date(),rack,position,level,code,description,quantity,clean_(b.notes),clean_(b.user),'ACTIVO']);
+    touchRackFromMapping_(rack,position,level);
+    return { ok:true, id:id, rack:rack, position:position, level:level, code:code, quantity:quantity };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function touchRackFromMapping_(rack, position, level) {
@@ -224,6 +233,46 @@ function lookupMaterial_(query) {
 function catalogDescription_(code) {
   const r = lookupMaterial_(code);
   return r ? r.description : '';
+}
+
+function catalogByCode_(code) {
+  code = upper_(code);
+  if (!code) return null;
+  const sh = sheet_(SHEETS.CATALOGO), last = sh.getLastRow();
+  if (last < 2) return null;
+  const rows = sh.getRange(2,1,last-1,5).getValues();
+  for (let i=0;i<rows.length;i++) {
+    if (upper_(rows[i][0]) === code && rows[i][4] !== false) {
+      return { code:code, description:clean_(rows[i][1]), category:clean_(rows[i][2]), unit:clean_(rows[i][3]) };
+    }
+  }
+  return null;
+}
+
+function addMaterial_(b) {
+  const code = upper_(b.code), description = clean_(b.description);
+  if (!code) throw new Error('Código requerido');
+  if (!description) throw new Error('Descripción requerida');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sh = sheet_(SHEETS.CATALOGO), last = sh.getLastRow();
+    if (last >= 2) {
+      const rows = sh.getRange(2,1,last-1,5).getValues();
+      for (let i=0;i<rows.length;i++) {
+        if (upper_(rows[i][0]) === code) {
+          const rowNum=i+2;
+          const currentDesc=clean_(rows[i][1]) || description;
+          sh.getRange(rowNum,2,1,4).setValues([[currentDesc,'Material de empaque',clean_(rows[i][3]),true]]);
+          return { ok:true, existing:true, material:{code:code,description:currentDesc,category:'Material de empaque',unit:clean_(rows[i][3])} };
+        }
+      }
+    }
+    sh.appendRow([code,description,'Material de empaque','',true]);
+    return { ok:true, existing:false, material:{code:code,description:description,category:'Material de empaque',unit:''} };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function upsertCatalog_(code,description) {
