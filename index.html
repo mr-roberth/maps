@@ -41,7 +41,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 <header class="header"><div class="brand"><div class="logo">OL</div><div><b>OLEOLAB</b><small>Mapeo de Racks</small></div></div><button id="settings" class="icon">⚙</button></header>
 <main>
 <section id="capture" class="view active">
-  <div class="heading"><div><p class="eyebrow">LEVANTAMIENTO EN CAMPO</p><h1>Ubicación física</h1></div><span id="status" class="badge">Backend pendiente</span></div>
+  <div class="heading"><div><p class="eyebrow">LEVANTAMIENTO EN CAMPO</p><h1>Ubicación física</h1></div><span id="status" class="badge">Conectando…</span></div>
   <div class="card location">
     <div class="location-top"><div><span>Ubicación activa</span><strong id="locationLabel">Rack A · P1 · N1</strong></div><button id="rackConfig" class="btn ghost">Configurar</button></div>
     <div id="rackStrip" class="rack-strip"></div>
@@ -85,13 +85,13 @@ var cfg=JSON.parse(localStorage.getItem("oleolabRackCfg")||"{}");
 cfg.gasUrl=DEFAULT_GAS_URL;
 if("apiKey" in cfg) delete cfg.apiKey;
 localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));
-var state={rack:localStorage.getItem("rack")||"A",position:Number(localStorage.getItem("pos")||1),level:Number(localStorage.getItem("level")||1),racks:{},records:[],recent:JSON.parse(localStorage.getItem("rackRecent")||"[]"),pending:JSON.parse(localStorage.getItem("rackPending")||"[]"),inventory:JSON.parse(localStorage.getItem("rackInventory")||"[]")};
+var state={rack:localStorage.getItem("rack")||"A",position:Number(localStorage.getItem("pos")||1),level:Number(localStorage.getItem("level")||1),racks:{},records:[],recent:JSON.parse(localStorage.getItem("rackRecent")||"[]"),pending:JSON.parse(localStorage.getItem("rackPending")||"[]"),deletePending:JSON.parse(localStorage.getItem("rackDeletePending")||"[]"),inventory:JSON.parse(localStorage.getItem("rackInventory")||"[]")};
 var scanStream=null,scanTimer=null;
 var PROD_RESET_VERSION="2026-10-06-empaque-v1";
 function applyProductionReset(){
  if(localStorage.getItem("oleolabProdReset")===PROD_RESET_VERSION)return;
- state.records=[];state.recent=[];state.pending=[];state.inventory=[];
- ["rackRecent","rackPending","rackInventory"].forEach(function(k){localStorage.removeItem(k)});
+ state.records=[];state.recent=[];state.pending=[];state.deletePending=[];state.inventory=[];
+ ["rackRecent","rackPending","rackDeletePending","rackInventory"].forEach(function(k){localStorage.removeItem(k)});
  localStorage.setItem("oleolabProdReset",PROD_RESET_VERSION);
 }
 function ensureOperator(){
@@ -176,20 +176,26 @@ function probePublicGas(){return new Promise(function(resolve,reject){if(!cfg.ga
 function friendlyConnectionError(msg){msg=String(msg||"");if(msg.indexOf("Primero ejecuta setup")>-1)return "Falta actualizar el Web App GAS";if(msg.indexOf("Tiempo de espera")>-1||msg.indexOf("Sin conexión")>-1)return "GAS sin respuesta";return msg||"Sin conexión"}
 function toast(t){var x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(function(){x.classList.remove("show")},2200)}
 function loading(v){$("#loading").classList.toggle("hidden",!v)}
-function saveState(){localStorage.setItem("rack",state.rack);localStorage.setItem("pos",state.position);localStorage.setItem("level",state.level);localStorage.setItem("rackPending",JSON.stringify(state.pending));localStorage.setItem("rackRecent",JSON.stringify(state.recent.slice(0,100)));localStorage.setItem("rackInventory",JSON.stringify(state.inventory.slice(0,5000)))}
+function saveState(){localStorage.setItem("rack",state.rack);localStorage.setItem("pos",state.position);localStorage.setItem("level",state.level);localStorage.setItem("rackPending",JSON.stringify(state.pending));localStorage.setItem("rackDeletePending",JSON.stringify(state.deletePending||[]));localStorage.setItem("rackRecent",JSON.stringify(state.recent.slice(0,100)));localStorage.setItem("rackInventory",JSON.stringify(state.inventory.slice(0,5000)))}
 function rackCfg(r){return state.racks[r]||{rack:r,positions:0,levels:0,notes:""}}
 function updateStatus(ok,text){var b=$("#status");b.textContent=text;b.className="badge "+(ok?"ok":"off")}
-function api(action,params){
+function pendingStatusText(){
+ var s=(state.pending||[]).length,d=(state.deletePending||[]).length,total=s+d;
+ if(!total)return "Conectado";
+ var parts=[];if(s)parts.push(s+" captura"+(s===1?"":"s"));if(d)parts.push(d+" eliminación"+(d===1?"":"es"));
+ return parts.join(" · ")+" pendiente"+(total===1?"":"s");
+}
+function api(action,params,timeoutMs){
  return new Promise(function(resolve,reject){
    if(!cfg.gasUrl)return reject(new Error("Falta URL de GAS"));
    var cb="cb_"+Date.now()+"_"+Math.floor(Math.random()*99999),done=false,script=document.createElement("script");
-   var q=Object.assign({action:action,callback:cb},params||{});
+   var q=Object.assign({action:action,callback:cb,_ts:Date.now()},params||{});
    window[cb]=function(data){if(done)return;done=true;cleanup();data&&data.ok!==false?resolve(data):reject(new Error((data&&data.error)||"Error de API"))};
    function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
    script.onerror=function(){if(!done){done=true;cleanup();reject(new Error("Sin conexión con GAS"))}};
    script.src=cfg.gasUrl+(cfg.gasUrl.indexOf("?")>-1?"&":"?")+Object.keys(q).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(q[k]==null?"":q[k])}).join("&");
    document.head.appendChild(script);
-   var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error("Tiempo de espera agotado"))}},12000);
+   var timer=setTimeout(function(){if(!done){done=true;cleanup();reject(new Error("Tiempo de espera agotado"))}},timeoutMs||12000);
  });
 }
 function renderRackStrip(){
@@ -248,9 +254,19 @@ function loadRack(){
 }
 function bootstrap(){
  initCatalog();renderRackStrip();renderOverview();updateLocation();renderRecent();renderInventory();
- cfg.gasUrl=DEFAULT_GAS_URL;
- localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));
- api("bootstrap").then(function(d){(d.racks||[]).forEach(function(r){state.racks[r.rack]=r});(d.catalog||[]).forEach(function(m){if(m&&m.code)MATERIAL_CATALOG[String(m.code).toUpperCase()]=m.description||""});initCatalog();state.recent=d.recent||state.recent;renderOverview();renderRecent();updateStatus(true,state.pending.length?state.pending.length+" pendiente(s)":"Conectado");clamp();loadRack();syncPending()}).catch(function(e){var m=friendlyConnectionError(e&&e.message);updateStatus(false,m);$("#status").title=(e&&e.message)||m})
+ cfg.gasUrl=DEFAULT_GAS_URL;localStorage.setItem("oleolabRackCfg",JSON.stringify(cfg));
+ if(!navigator.onLine){updateStatus(false,pendingStatusText()==="Conectado"?"Sin conexión":pendingStatusText());return}
+ updateStatus(false,"Conectando…");
+ api("ping",{},4500).then(function(){
+   updateStatus(true,pendingStatusText());syncPending();
+   return api("bootstrap",{},12000)
+ }).then(function(d){
+   (d.racks||[]).forEach(function(r){state.racks[r.rack]=r});
+   (d.catalog||[]).forEach(function(m){if(m&&m.code)MATERIAL_CATALOG[String(m.code).toUpperCase()]=m.description||""});
+   initCatalog();state.recent=d.recent||state.recent;renderOverview();renderRecent();clamp();loadRack()
+ }).catch(function(e){
+   var m=friendlyConnectionError(e&&e.message);updateStatus(false,m);$("#status").title=(e&&e.message)||m
+ })
 }
 function localRecord(p){return{id:p.clientId||("local-"+Date.now()),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",quantity:Number(p.quantity)||0,notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
 function newClientId(){return "dev-"+Date.now()+"-"+Math.random().toString(36).slice(2,10)}
@@ -284,7 +300,11 @@ function confirmDeleteRecord(){
  if(localPending){
    removeRecordLocal(id);pendingDeleteRecord=null;deleteInFlight=false;b.disabled=false;b.textContent="Eliminar registro";$("#deleteDialog").close();toast("Registro local descartado");return
  }
- if(!navigator.onLine){deleteInFlight=false;b.disabled=false;b.textContent="Eliminar registro";return toast("Conéctate a internet para eliminar este registro")}
+ if(!navigator.onLine){
+   if(!(state.deletePending||[]).some(function(x){return String(x.id)===id}))state.deletePending.push({id:id,rack:rec.rack,position:rec.position,level:rec.level,code:rec.code});
+   removeRecordLocal(id);saveState();pendingDeleteRecord=null;deleteInFlight=false;b.disabled=false;b.textContent="Eliminar registro";$("#deleteDialog").close();
+   updateStatus(false,pendingStatusText());toast("Eliminación guardada offline · se sincronizará");return
+ }
  api("deleteMapping",{id:id}).then(function(){
    removeRecordLocal(id);pendingDeleteRecord=null;$("#deleteDialog").close();toast("Registro eliminado");
    bootstrapRecent();refreshRackOverview();loadRack();var q=$("#searchInput").value.trim();if(q)search()
@@ -364,14 +384,28 @@ function saveMapping(){
  }).finally(function(){loading(false);setSaveBusy(false)})
 }
 function syncPending(){
- if(!state.pending.length||!cfg.gasUrl||!navigator.onLine)return;
- var ok=0;updateStatus(false,"Sincronizando "+state.pending.length+"…");
- function one(){
-   if(!state.pending.length){saveState();updateStatus(true,"Conectado");if(ok)toast(ok+" registro(s) sincronizados");bootstrapRecent();return}
-   var p=state.pending[0];
-   api("saveMapping",p).then(function(){state.pending.shift();ok++;saveState();one()}).catch(function(){saveState();updateStatus(false,state.pending.length+" pendiente(s)")})
+ if(!cfg.gasUrl||!navigator.onLine)return;
+ var total=(state.deletePending||[]).length+(state.pending||[]).length;
+ if(!total){updateStatus(true,"Conectado");return}
+ var doneCount=0;updateStatus(false,"Sincronizando "+total+"…");
+ function syncDeletes(){
+   if(!state.deletePending.length)return syncSaves();
+   var d=state.deletePending[0];
+   api("deleteMapping",{id:d.id},7000).then(function(){
+     state.deletePending.shift();doneCount++;saveState();syncDeletes()
+   }).catch(function(){saveState();updateStatus(false,pendingStatusText())})
  }
- one()
+ function syncSaves(){
+   if(!state.pending.length){
+     saveState();updateStatus(true,"Conectado");if(doneCount)toast(doneCount+" cambio(s) sincronizados");
+     bootstrapRecent();refreshRackOverview();loadRack();return
+   }
+   var p=state.pending[0];
+   api("saveMapping",p,9000).then(function(){
+     state.pending.shift();doneCount++;saveState();syncSaves()
+   }).catch(function(){saveState();updateStatus(false,pendingStatusText())})
+ }
+ syncDeletes()
 }
 function bootstrapRecent(){api("recent").then(function(d){state.recent=d.recent||state.recent;renderRecent()}).catch(function(){})}
 function refreshRackOverview(){
@@ -418,7 +452,7 @@ async function scan(){
  try{var supported=await BarcodeDetector.getSupportedFormats(),formats=supported.filter(function(x){return["code_128","code_39","ean_13","ean_8","qr_code","data_matrix"].indexOf(x)>-1}),detector=new BarcodeDetector({formats:formats});scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});var v=$("#video");v.srcObject=scanStream;$("#scannerDialog").showModal();var tick=async function(){if(!scanStream)return;try{var a=await detector.detect(v);if(a[0]&&a[0].rawValue){$("#code").value=a[0].rawValue.trim();var found=applyCatalogCode(true);stopScan();if(found){toast("Material identificado: "+found.code)}else{$("#code").value="";$("#desc").value="";delete $("#desc").dataset.catalogFilled;toast("No identificado · escribe el CME")}$("#code").focus();return}}catch(e){}scanTimer=requestAnimationFrame(tick)};scanTimer=requestAnimationFrame(tick)}catch(e){toast("No pude abrir la cámara")}
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
-$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else syncPending()});window.addEventListener("online",syncPending);if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=18",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
+$("#mapForm").onsubmit=function(e){e.preventDefault();saveMapping()};$("#code").addEventListener("input",function(){applyCatalogCode(false)});$("#code").addEventListener("change",function(){applyCatalogCode(true)});$("#code").addEventListener("blur",function(){applyCatalogCode(true)});$$("[data-step]").forEach(function(b){b.onclick=function(){if(b.dataset.step==="p")state.position=Math.max(1,state.position+Number(b.dataset.dir));else state.level=Math.max(1,state.level+Number(b.dataset.dir));clamp()}});$("#pos").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.position=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#pos").onchange=syncLocationFromInputs;$("#level").oninput=function(){var v=parseInt(this.value,10);if(Number.isFinite(v)&&v>=1){state.level=v;saveState();$("#locationLabel").textContent="Rack "+state.rack+" · P"+state.position+" · N"+state.level}};$("#level").onchange=syncLocationFromInputs;$("#next").onclick=function(){step(1)};$("#prev").onclick=function(){step(-1)};$("#rackConfig").onclick=openRack;$("#rackSave").onclick=saveRack;$("#refreshRack").onclick=loadRack;$("#sync").onclick=syncPending;$("#searchBtn").onclick=search;$("#searchInput").onkeydown=function(e){if(e.key==="Enter")search()};$("#inventorySearch").oninput=renderInventory;$$(".nav").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});$("#settings").onclick=openSettings;$("#scan").onclick=scan;$("#addCatalogBtn").onclick=registerCatalogMaterial;$("#confirmDelete").onclick=confirmDeleteRecord;$("#closeScanner").onclick=stopScan;$("#operatorForm").onsubmit=saveOperator;$("#closeOperator").onclick=function(){if((cfg.user||"").trim())$("#operatorDialog").close()};document.addEventListener("visibilitychange",function(){if(document.hidden)stopScan();else{api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"Sin conexión")})}});window.addEventListener("online",function(){updateStatus(false,"Reconectando…");api("ping",{},4500).then(function(){updateStatus(true,pendingStatusText());syncPending()}).catch(function(){updateStatus(false,"GAS sin respuesta")})});if("serviceWorker" in navigator)navigator.serviceWorker.register("service-worker.js?v=19",{updateViaCache:"none"}).then(function(r){r.update().catch(function(){})}).catch(function(){});
 applyProductionReset();
 if(ensureOperator())bootstrap();
 })();
