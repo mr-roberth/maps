@@ -289,7 +289,7 @@ function openDeleteRecord(id){
  $("#deleteDialog").showModal()
 }
 function bindDeleteButtons(root){
- $(root+" [data-delete-id]").forEach(function(b){b.onclick=function(){openDeleteRecord(b.dataset.deleteId)}})
+ document.querySelectorAll(root+" [data-delete-id]").forEach(function(b){b.onclick=function(){openDeleteRecord(b.dataset.deleteId)}})
 }
 function confirmDeleteRecord(){
  if(deleteInFlight||!pendingDeleteRecord)return;
