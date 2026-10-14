@@ -13,12 +13,13 @@ function doGet(e) {
   try {
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '2.5.0', time: new Date().toISOString() };
-    else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), layout: rackLayout_(), spreadsheetId: SPREADSHEET_ID };
+    if (action === 'ping') data = { ok: true, version: '2.6.0', time: new Date().toISOString(), revision: dataRevision_() };
+    else if (action === 'revision') data = { ok:true, revision:dataRevision_(), time:new Date().toISOString() };
+    else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), layout: rackLayout_(), revision:dataRevision_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
     else if (action === 'search') data = search_(String(p.q || ''));
     else if (action === 'recent') data = { ok: true, recent: recent_(20) };
-    else if (action === 'records') data = { ok: true, records: activeMappings_().slice().reverse(), layout: rackLayout_() };
+    else if (action === 'records') data = { ok: true, records: activeMappings_().slice().reverse(), layout: rackLayout_(), revision:dataRevision_() };
     else if (action === 'bulkDelete') data = bulkDeleteMappings_(p.ids || '');
     else if (action === 'catalog') data = { ok: true, catalog: catalog_() };
     else if (action === 'lookupMaterial') data = { ok: true, material: lookupMaterial_(p.code || p.q || p.description || '') };
@@ -52,6 +53,22 @@ function doPost(e) {
   }
 }
 
+
+function dataRevision_() {
+  const p = PropertiesService.getScriptProperties();
+  let v = p.getProperty('DATA_REVISION');
+  if (!v) {
+    v = String(Date.now());
+    p.setProperty('DATA_REVISION',v);
+  }
+  return v;
+}
+
+function bumpRevision_() {
+  const v = String(Date.now());
+  PropertiesService.getScriptProperties().setProperty('DATA_REVISION',v);
+  return v;
+}
 
 function ensureStructure_() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -141,7 +158,8 @@ function saveRackLayout_(b) {
   } finally {
     lock.releaseLock();
   }
-  return {ok:true, layout:rackLayout_(), version:version};
+  const revision=bumpRevision_();
+  return {ok:true, layout:rackLayout_(), version:version, revision:revision};
 }
 
 function racks_() {
@@ -214,7 +232,7 @@ function saveMapping_(b) {
       const dup = vals.some(function(r){
         return upper_(r[0])===rack && Number(r[1])===position && Number(r[2])===level && upper_(r[3])===code && upper_(r[8]||'ACTIVO')!=='ELIMINADO';
       });
-      if (dup) return { ok:true, duplicate:true, message:'Ese código ya está mapeado en la misma ubicación', rack:rack, position:position, level:level, code:code };
+      if (dup) return { ok:true, duplicate:true, message:'Ese código ya está mapeado en la misma ubicación', rack:rack, position:position, level:level, code:code, clientId:clean_(b.clientId), revision:dataRevision_() };
     }
 
     const quantity = Math.max(0, Number(b.quantity)||0);
@@ -222,7 +240,8 @@ function saveMapping_(b) {
     const id = Utilities.getUuid();
     sh.appendRow([id,new Date(),rack,position,level,code,description,quantity,clean_(b.notes),clean_(b.user),'ACTIVO']);
     touchRackFromMapping_(rack,position,level);
-    return { ok:true, id:id, rack:rack, position:position, level:level, code:code, quantity:quantity };
+    const revision=bumpRevision_();
+    return { ok:true, id:id, rack:rack, position:position, level:level, code:code, quantity:quantity, clientId:clean_(b.clientId), revision:revision };
   } finally {
     lock.releaseLock();
   }
@@ -250,7 +269,8 @@ function updateRack_(b) {
   const idx = vals.findIndex(function(r){return upper_(r[0])===rack});
   const row = [rack,positions,levels,true,clean_(b.notes),new Date()];
   if (idx >= 0) sh.getRange(idx+2,1,1,6).setValues([row]); else sh.appendRow(row);
-  return { ok:true, rack:rack, positions:positions, levels:levels };
+  const revision=bumpRevision_();
+  return { ok:true, rack:rack, positions:positions, levels:levels, revision:revision };
 }
 
 function deleteMapping_(b) {
@@ -262,7 +282,8 @@ function deleteMapping_(b) {
   const i = ids.indexOf(id);
   if (i < 0) throw new Error('Registro no encontrado');
   sh.getRange(i+2,11).setValue('ELIMINADO');
-  return { ok:true, id:id };
+  const revision=bumpRevision_();
+  return { ok:true, id:id, revision:revision };
 }
 function bulkDeleteMappings_(idsValue) {
   const ids = Array.isArray(idsValue) ? idsValue.map(clean_).filter(Boolean) : clean_(idsValue).split(',').map(clean_).filter(Boolean);
@@ -284,8 +305,9 @@ function bulkDeleteMappings_(idsValue) {
         deletedIds.push(id);
       }
     });
-    if (deletedIds.length) sh.getRange(2,11,status.length,1).setValues(status);
-    return { ok:true, deleted:deletedIds.length, ids:deletedIds };
+    let revision=dataRevision_();
+    if (deletedIds.length) { sh.getRange(2,11,status.length,1).setValues(status); revision=bumpRevision_(); }
+    return { ok:true, deleted:deletedIds.length, ids:deletedIds, revision:revision };
   } finally {
     lock.releaseLock();
   }
@@ -353,12 +375,14 @@ function addMaterial_(b) {
           const rowNum=i+2;
           const currentDesc=clean_(rows[i][1]) || description;
           sh.getRange(rowNum,2,1,4).setValues([[currentDesc,'Material de empaque',clean_(rows[i][3]),true]]);
-          return { ok:true, existing:true, material:{code:code,description:currentDesc,category:'Material de empaque',unit:clean_(rows[i][3])} };
+          const revision=bumpRevision_();
+          return { ok:true, existing:true, material:{code:code,description:currentDesc,category:'Material de empaque',unit:clean_(rows[i][3])}, revision:revision };
         }
       }
     }
     sh.appendRow([code,description,'Material de empaque','',true]);
-    return { ok:true, existing:false, material:{code:code,description:description,category:'Material de empaque',unit:''} };
+    const revision=bumpRevision_();
+    return { ok:true, existing:false, material:{code:code,description:description,category:'Material de empaque',unit:''}, revision:revision };
   } finally {
     lock.releaseLock();
   }
