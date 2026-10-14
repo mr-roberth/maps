@@ -32,7 +32,7 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
 .loading{position:fixed;z-index:70;inset:0;background:rgba(255,255,255,.76);display:grid;place-items:center}.loading>div{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 22px;box-shadow:var(--shadow);font-weight:900;color:var(--g)}
 .scanner{position:absolute;inset:0;background:#07130e;color:#fff;padding:16px}.scanner video{width:100%;height:70vh;object-fit:cover;border-radius:18px;margin-top:12px}.scanline{position:absolute;left:12%;right:12%;top:42%;height:2px;background:var(--lime);box-shadow:0 0 14px var(--lime)}
 @media(min-width:700px){main{padding:22px}.overview{grid-template-columns:repeat(6,1fr)}.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%);bottom:20px;border-radius:24px}.bottom{left:50%;right:auto;width:620px;transform:translateX(-50%);border:1px solid var(--line);border-radius:20px 20px 0 0}}
-.catalog-gate{border:1px solid #e1c989;background:#fffaf0;border-radius:14px;padding:12px;margin:4px 0 12px;display:grid;gap:8px}.catalog-gate strong{color:#7a5a00}.catalog-gate small{color:var(--muted);line-height:1.35}.btn:disabled,.scan:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.15)}
+.catalog-gate{border:1px solid #e1c989;background:#fffaf0;border-radius:14px;padding:12px;margin:4px 0 12px;display:grid;gap:8px}.catalog-gate.hidden{display:none}.catalog-gate strong{color:#7a5a00}.catalog-gate small{color:var(--muted);line-height:1.35}.btn:disabled,.scan:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.15)}
 </style>
 </head>
 <body>
@@ -250,7 +250,7 @@ function bootstrap(){
 }
 function localRecord(p){return{id:p.clientId||("local-"+Date.now()),date:new Date().toISOString(),timeLabel:"pendiente",rack:p.rack,position:Number(p.position),level:Number(p.level),code:p.code,description:p.description||"",quantity:Number(p.quantity)||0,notes:p.notes||"",user:p.user||"",status:"ACTIVO"}}
 function newClientId(){return "dev-"+Date.now()+"-"+Math.random().toString(36).slice(2,10)}
-function clearCapture(){ $("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";$("#code").focus() }
+function clearCapture(){ $("#code").value="";$("#desc").value="";$("#qty").value="";$("#notes").value="";hideCatalogGate();$("#code").focus() }
 var saveInFlight=false,catalogInFlight=false;
 function setSaveBusy(v){
  saveInFlight=!!v;
@@ -308,8 +308,15 @@ function saveMapping(){
  }
  loading(true);
  api("saveMapping",p).then(function(d){
+   if(d.duplicate){
+     state.recent=state.recent.filter(function(x){return x!==rec});
+     state.records=state.records.filter(function(x){return x!==rec});
+     state.inventory=state.inventory.filter(function(x){return x!==rec});
+     saveState();renderRecent();renderRackMap(state.records);renderInventory();clearCapture();loadRack();bootstrapRecent();
+     toast("Ya existía en "+p.rack+" · P"+p.position+" · N"+p.level);return
+   }
    rec.id=d.id||rec.id;rec.timeLabel="ahora";saveState();renderRecent();renderRackMap(state.records);renderInventory();clearCapture();
-   toast(d.duplicate?("Ya existía en "+p.rack+" · P"+p.position+" · N"+p.level):("Guardado "+p.rack+" · P"+p.position+" · N"+p.level+" · "+qty+" pzas"));
+   toast("Guardado "+p.rack+" · P"+p.position+" · N"+p.level+" · "+qty+" pzas");
  }).catch(function(e){
    if(String(e&&e.message||"").indexOf("MATERIAL_NOT_IN_CATALOG")>-1){showCatalogGate();toast("Material no registrado en catálogo")}
    else{state.pending.push(p);saveState();renderRecent();renderRackMap(state.records);renderInventory();updateStatus(false,state.pending.length+" pendiente(s)");clearCapture();toast("Guardado offline · pendiente de sincronizar")}
