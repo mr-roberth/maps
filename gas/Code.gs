@@ -121,7 +121,7 @@ function saveRackLayout_(b) {
     const rack = upper_(item && item.rack);
     const x = Number(item && item.x), y = Number(item && item.y);
     if (!/^[A-Z]$/.test(rack)) return;
-    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 11 || y < 0 || y > 9) return;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 10 || y < 0 || y > 8) return;
     byRack[rack] = {rack:rack,x:Math.round(x),y:Math.round(y)};
   });
   const current = rackLayout_();
