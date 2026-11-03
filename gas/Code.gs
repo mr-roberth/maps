@@ -13,7 +13,7 @@ function doGet(e) {
   try {
     const action = String(p.action || 'ping');
     let data;
-    if (action === 'ping') data = { ok: true, version: '2.6.0', time: new Date().toISOString(), revision: dataRevision_() };
+    if (action === 'ping') data = { ok: true, version: '2.7.0', time: new Date().toISOString(), revision: dataRevision_() };
     else if (action === 'revision') data = { ok:true, revision:dataRevision_(), time:new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), layout: rackLayout_(), revision:dataRevision_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
@@ -73,7 +73,7 @@ function bumpRevision_() {
 function ensureStructure_() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const defs = [
-    ['MAPEO', ['ID','FechaHora','Rack','Posicion','Nivel','CodigoMaterial','Descripcion','CantidadPiezas','Observaciones','Usuario','Estado']],
+    ['MAPEO', ['ID','FechaHora','Rack','Posicion','Nivel','CodigoMaterial','Descripcion','CantidadPiezas','Observaciones','Usuario','Estado','ClientId']],
     ['RACKS', ['Rack','Posiciones','Niveles','Activo','Notas','UltimaActualizacion']],
     ['CATALOGO', ['CodigoMaterial','Descripcion','Categoria','Unidad','Activo']],
     ['CONFIG', ['Clave','Valor','Descripcion','Editable']],
@@ -84,6 +84,10 @@ function ensureStructure_() {
     if (!sh) sh = ss.insertSheet(d[0]);
     const current = sh.getRange(1,1,1,d[1].length).getValues()[0];
     if (!current[0]) sh.getRange(1,1,1,d[1].length).setValues([d[1]]); else if (d[0] === 'MAPEO' && current.indexOf('CantidadPiezas') < 0) { sh.insertColumnAfter(7); sh.getRange(1,8).setValue('CantidadPiezas'); }
+    if (d[0] === 'MAPEO') {
+      if (sh.getMaxColumns() < 12) sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
+      if (sh.getRange(1,12).getValue() !== 'ClientId') sh.getRange(1,12).setValue('ClientId');
+    }
   });
   const racks = ss.getSheetByName('RACKS');
   if (racks.getLastRow() < 27) {
@@ -227,18 +231,23 @@ function saveMapping_(b) {
   lock.waitLock(15000);
   try {
     const sh = sheet_(SHEETS.MAPEO), last = sh.getLastRow();
-    if (last >= 2) {
-      const vals = sh.getRange(2,3,last-1,9).getValues();
-      const dup = vals.some(function(r){
-        return upper_(r[0])===rack && Number(r[1])===position && Number(r[2])===level && upper_(r[3])===code && upper_(r[8]||'ACTIVO')!=='ELIMINADO';
-      });
-      if (dup) return { ok:true, duplicate:true, message:'Ese código ya está mapeado en la misma ubicación', rack:rack, position:position, level:level, code:code, clientId:clean_(b.clientId), revision:dataRevision_() };
+    // La unicidad corresponde a la CAPTURA, no al material/ubicación.
+    // Dos cajas del mismo CME pueden quedar en el mismo rack, posición y nivel.
+    // ClientId protege reintentos de red y sincronizaciones offline.
+    const clientId = clean_(b.clientId);
+    if (clientId && last >= 2) {
+      const clientIds = sh.getRange(2,12,last-1,1).getValues();
+      const existingIndex = clientIds.findIndex(function(r){ return clean_(r[0]) === clientId; });
+      if (existingIndex >= 0) {
+        const existingId = clean_(sh.getRange(existingIndex + 2,1).getValue());
+        return { ok:true, duplicate:true, id:existingId, clientId:clientId, revision:dataRevision_(), message:'Captura ya sincronizada' };
+      }
     }
 
     const quantity = Math.max(0, Number(b.quantity)||0);
     const description = material.description;
     const id = Utilities.getUuid();
-    sh.appendRow([id,new Date(),rack,position,level,code,description,quantity,clean_(b.notes),clean_(b.user),'ACTIVO']);
+    sh.appendRow([id,new Date(),rack,position,level,code,description,quantity,clean_(b.notes),clean_(b.user),'ACTIVO',clientId]);
     touchRackFromMapping_(rack,position,level);
     const revision=bumpRevision_();
     return { ok:true, id:id, rack:rack, position:position, level:level, code:code, quantity:quantity, clientId:clean_(b.clientId), revision:revision };
