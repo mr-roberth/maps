@@ -82,6 +82,7 @@ function ensureStructure_() {
   defs.forEach(function(d) {
     let sh = ss.getSheetByName(d[0]);
     if (!sh) sh = ss.insertSheet(d[0]);
+    if (d[0] === 'MAPEO' && sh.getMaxColumns() < 12) sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
     const current = sh.getRange(1,1,1,d[1].length).getValues()[0];
     if (!current[0]) sh.getRange(1,1,1,d[1].length).setValues([d[1]]); else if (d[0] === 'MAPEO' && current.indexOf('CantidadPiezas') < 0) { sh.insertColumnAfter(7); sh.getRange(1,8).setValue('CantidadPiezas'); }
     if (d[0] === 'MAPEO') {
