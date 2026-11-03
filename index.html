@@ -698,10 +698,29 @@ function renderSearch(a){
 }
 function renderInventory(){
  var q=($("#inventorySearch")&&$("#inventorySearch").value||"").trim().toUpperCase(),src=state.inventory||[],groups={};
- src.forEach(function(x){var key=String(x.code||"").toUpperCase();if(!key)return;if(q&&key.indexOf(q)<0&&String(x.description||"").toUpperCase().indexOf(q)<0)return;if(!groups[key])groups[key]={code:key,description:x.description||"",total:0,locs:[]};groups[key].total+=Number(x.quantity)||0;groups[key].locs.push(x)});
- var a=Object.keys(groups).map(function(k){return groups[k]}).sort(function(a,b){return a.code.localeCompare(b.code)}),grand=a.reduce(function(s,x){return s+x.total},0);if($("#inventoryTotal"))$("#inventoryTotal").textContent=grand.toLocaleString("es-MX")+" pzas";
+ src.forEach(function(x){
+  var key=String(x.code||"").toUpperCase(),rack=String(x.rack||"").toUpperCase();
+  if(!key)return;
+  if(q&&key.indexOf(q)<0&&String(x.description||"").toUpperCase().indexOf(q)<0)return;
+  if(!groups[key])groups[key]={code:key,description:x.description||"",total:0,racks:{}};
+  var g=groups[key],amount=Number(x.quantity)||0;
+  g.total+=amount;
+  if(!g.racks[rack])g.racks[rack]={rack:rack,total:0,locs:[]};
+  g.racks[rack].total+=amount;g.racks[rack].locs.push(x);
+ });
+ var a=Object.keys(groups).map(function(k){return groups[k]}).sort(function(a,b){return a.code.localeCompare(b.code)}),grand=a.reduce(function(s,x){return s+x.total},0);
+ if($("#inventoryTotal"))$("#inventoryTotal").textContent=grand.toLocaleString("es-MX")+" pzas";
  if(!a.length){$("#inventoryResults").innerHTML='<div class="empty">No hay registros activos en el inventario.</div>';return}
- $("#inventoryResults").innerHTML=a.map(function(g){return '<div class="result"><div style="display:flex;justify-content:space-between;gap:12px"><div><strong>'+esc(g.code)+'</strong><div class="muted">'+esc(g.description||"Sin descripción")+'</div></div><strong style="color:var(--g);font-size:20px">'+g.total.toLocaleString("es-MX")+' pzas</strong></div><div class="where">'+g.locs.map(function(x){return '<span class="pill">Rack '+esc(x.rack)+' · P'+x.position+' · N'+x.level+': '+Number(x.quantity||0).toLocaleString("es-MX")+' pzas'+(x.id?' <button type="button" class="delete-mini" style="padding:3px 6px;margin-left:4px" data-delete-id="'+esc(x.id)+'">×</button>':"")+'</span>'}).join("")+'</div></div>'}).join("");bindDeleteButtons("#inventoryResults")
+ $("#inventoryResults").innerHTML=a.map(function(g){
+  var rackHtml=Object.keys(g.racks).sort().map(function(r){
+   var group=g.racks[r];
+   return '<div style="margin-top:9px"><strong>Rack '+esc(r)+' · Total '+group.total.toLocaleString("es-MX")+' pzas</strong><div class="where">'+group.locs.map(function(x){
+    return '<span class="pill">P'+x.position+' · N'+x.level+': '+Number(x.quantity||0).toLocaleString("es-MX")+' pzas'+(x.id?' <button type="button" class="delete-mini" style="padding:3px 6px;margin-left:4px" data-delete-id="'+esc(x.id)+'">×</button>':"")+'</span>';
+   }).join("")+'</div></div>';
+  }).join("");
+  return '<div class="result"><div style="display:flex;justify-content:space-between;gap:12px"><div><strong>'+esc(g.code)+'</strong><div class="muted">'+esc(g.description||"Sin descripción")+'</div></div><strong style="color:var(--g);font-size:20px">'+g.total.toLocaleString("es-MX")+' pzas</strong></div>'+rackHtml+'</div>';
+ }).join("");
+ bindDeleteButtons("#inventoryResults")
 }
 function loadManage(){
  renderRecoveryPanel();
