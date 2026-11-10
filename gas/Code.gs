@@ -1,4 +1,5 @@
 const SPREADSHEET_ID = '12SCiQm8V1KWoDCcvSME3rLUsQUM7YNqKPbT7IsKf2s4';
+const MOVEMENT_HEADERS = ['ID','FechaHora','Tipo','CME','Descripcion','Rack','Posicion','Nivel','CantidadPiezas','Observaciones','Capturista'];
 const SHEETS = { MAPEO: 'MAPEO', RACKS: 'RACKS', CATALOGO: 'CATALOGO', CONFIG: 'CONFIG', RACK_LAYOUT: 'RACK_LAYOUT' };
 
 function setup() {
@@ -14,6 +15,9 @@ function doGet(e) {
     const action = String(p.action || 'ping');
     let data;
     if (action === 'ping') data = { ok: true, version: '2.7.0', time: new Date().toISOString(), revision: dataRevision_() };
+    else if (action === 'inventorySummary') data = { ok: true, items: inventorySummary_() };
+    else if (action === 'movements') data = { ok:true, movements:recentMovements_() };
+    else if (action === 'saveMovement') data = saveMovement_(p);
     else if (action === 'revision') data = { ok:true, revision:dataRevision_(), time:new Date().toISOString() };
     else if (action === 'bootstrap') data = { ok: true, racks: racks_(), recent: recent_(12), catalog: catalog_(), layout: rackLayout_(), revision:dataRevision_(), spreadsheetId: SPREADSHEET_ID };
     else if (action === 'rack') data = rack_(String(p.rack || 'A').toUpperCase());
@@ -41,6 +45,7 @@ function doPost(e) {
     const action = String(body.action || '');
     let data;
     if (action === 'saveMapping') data = saveMapping_(body);
+    else if (action === 'saveMovement') data = saveMovement_(body);
     else if (action === 'addMaterial') data = addMaterial_(body);
     else if (action === 'updateRack') data = updateRack_(body);
     else if (action === 'saveRackLayout') data = saveRackLayout_(body);
@@ -77,6 +82,7 @@ function ensureStructure_() {
     ['RACKS', ['Rack','Posiciones','Niveles','Activo','Notas','UltimaActualizacion']],
     ['CATALOGO', ['CodigoMaterial','Descripcion','Categoria','Unidad','Activo']],
     ['CONFIG', ['Clave','Valor','Descripcion','Editable']],
+    ['MOVIMIENTOS', MOVEMENT_HEADERS],
     ['RACK_LAYOUT', ['Rack','X','Y','UpdatedBy','UpdatedAt','Version']]
   ];
   defs.forEach(function(d) {
@@ -409,4 +415,88 @@ function upsertCatalog_(code,description) {
     }
   }
   sh.appendRow([code,description,'','',true]);
+}
+function recentMovements_() {
+  const sh = ss_().getSheetByName('MOVIMIENTOS');
+  if (!sh || sh.getLastRow() < 2) return [];
+  const last = sh.getLastRow();
+  const count = Math.min(30, last - 1);
+  return sh.getRange(last - count + 1,1,count,MOVEMENT_HEADERS.length).getDisplayValues()
+    .reverse().map(function(r) {
+      return { type:r[2], code:r[3], description:r[4], rack:r[5], position:r[6],
+        level:r[7], quantity:r[8], notes:r[9], user:r[10], date:r[1] };
+    });
+}
+
+function saveMovement_(b) {
+  const id = clean_(b.clientId), type = upper_(b.type), code = upper_(b.code);
+  const rack = upper_(b.rack), position = Number(b.position), level = Number(b.level);
+  const quantity = Number(b.quantity), user = clean_(b.user), notes = clean_(b.notes);
+  if (!/^dev-[0-9]+-[a-z0-9]{1,12}$/.test(id)) throw new Error('Identificador de movimiento inválido');
+  if (type !== 'ENTRADA' && type !== 'SALIDA') throw new Error('Tipo de movimiento inválido');
+  if (!/^[A-Z]$/.test(rack) || !Number.isSafeInteger(position) || position < 1 || position > 500 ||
+      !Number.isSafeInteger(level) || level < 1 || level > 30) throw new Error('Ubicación inválida');
+  if (!Number.isSafeInteger(quantity) || quantity < 1) throw new Error('Indica una cantidad entera mayor a cero');
+  if (!code || code.length > 80 || !user || user.length > 80 || notes.length > 250) throw new Error('Revisa el CME, capturista y observaciones');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sh = sheet_('MOVIMIENTOS');
+    const last = sh.getLastRow();
+    if (last > 1 && sh.getRange(2,1,last-1,1).createTextFinder(id).matchEntireCell(true).findNext()) {
+      return { ok:true, id:id };
+    }
+    const material = catalogByCode_(code);
+    if (!material) throw new Error('El CME no está activo en el catálogo');
+    const config = racks_().find(function(r){ return r.rack === rack; });
+    if (config && ((config.positions && position > config.positions) || (config.levels && level > config.levels))) {
+      throw new Error('La ubicación está fuera del rango configurado');
+    }
+    // El prefijo conserva ceros iniciales y evita interpretar texto como fórmulas.
+    sh.appendRow([id,new Date(),type,"'" + code,"'" + material.description,rack,position,level,quantity,"'" + notes,"'" + user]);
+    SpreadsheetApp.flush();
+    return { ok:true, id:id };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function inventorySummary_() {
+  const totals = new Map();
+  function item(code, description) {
+    const key = upper_(code);
+    if (!totals.has(key)) {
+      totals.set(key, { code:key, description:'', initial:0, entries:0, exits:0, total:0 });
+    }
+    const row = totals.get(key);
+    if (!row.description) row.description = clean_(description);
+    return row;
+  }
+
+  const map = sheet_(SHEETS.MAPEO);
+  const mapCount = map.getLastRow() - 1;
+  if (mapCount > 0) {
+    map.getRange(2,6,mapCount,6).getValues().forEach(function(r) {
+      if (clean_(r[0]) && upper_(r[5]) !== 'ELIMINADO') {
+        item(r[0],r[1]).initial += Number(r[2]) || 0;
+      }
+    });
+  }
+
+  const movements = sheet_('MOVIMIENTOS');
+  const count = movements.getLastRow() - 1;
+  if (count > 0) {
+    movements.getRange(2,3,count,7).getValues().forEach(function(r) {
+      const type = upper_(r[0]), quantity = Number(r[6]);
+      if (!clean_(r[1]) || !Number.isSafeInteger(quantity) || quantity < 1) return;
+      if (type === 'ENTRADA') item(r[1],r[2]).entries += quantity;
+      if (type === 'SALIDA') item(r[1],r[2]).exits += quantity;
+    });
+  }
+
+  return Array.from(totals.values()).map(function(row) {
+    row.total = row.initial + row.entries - row.exits;
+    return row;
+  }).sort(function(a,b) { return a.code.localeCompare(b.code); });
 }
