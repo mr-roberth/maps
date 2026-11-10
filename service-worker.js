@@ -1,4 +1,4 @@
-const CACHE = "oleolab-racks-v33-auto-update";
+const CACHE = "oleolab-racks-v34-movement-details";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", event => {
