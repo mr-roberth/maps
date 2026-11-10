@@ -96,9 +96,12 @@ dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;heigh
       <label>Posición<input name="position" required type="number" min="1" max="500" step="1"></label>
       <label>Nivel<input name="level" required type="number" min="1" max="30" step="1"></label>
       <label>Piezas<input name="quantity" required type="number" min="1" step="1"></label>
+      <label>Fecha del movimiento<input name="movementDate" type="date" required></label>
+      <label>Hora del movimiento (Ciudad de México)<input name="movementTime" type="time" required></label>
+      <label>Persona que recibe / a quien se entregó<input name="recipient" required maxlength="80" autocomplete="off" placeholder="Nombre de quien recibe el material"></label>
     </div>
     <div id="movementMaterial" class="muted" role="status"></div>
-    <label>Observaciones<input name="notes" maxlength="250" placeholder="Orden, motivo o referencia (opcional)"></label>
+    <label>Observaciones<input name="notes" maxlength="100" placeholder="Orden, motivo o referencia (opcional, 100 caracteres)"></label>
     <button id="movementSave" class="btn primary" type="submit">Registrar movimiento</button>
     <p id="movementStatus" role="status"></p>
   </form>
@@ -839,8 +842,32 @@ async function scan(){
 }
 function stopScan(){if(scanTimer)cancelAnimationFrame(scanTimer);scanTimer=null;if(scanStream)scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null;if($("#scannerDialog").open)$("#scannerDialog").close()}
 
+function resetMovementDateTime(){
+ const fields = $("#movementForm").elements;
+ const parts = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Mexico_City",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+ const value = Object.fromEntries(parts.map(function(p){return [p.type,p.value]}));
+ fields.movementDate.value = value.year+"-"+value.month+"-"+value.day;
+ fields.movementTime.value = value.hour+":"+value.minute;
+}
+
+// Metadata stays in Observaciones so the deployed GAS also preserves it.
+function movementDetails(notes){
+ const match = /^Fecha y hora: (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) \(CDMX\)\nEntregado a: ([^\n]+)(?:\n\n([\s\S]*))?$/.exec(notes || "");
+ return match ? {date:match[1],time:match[2],recipient:match[3],notes:match[4] || ""} : null;
+}
+
+function movementNotes(fields){
+ const recipient = fields.recipient.trim();
+ if(!recipient || recipient.length > 80 || /[\r\n]/.test(recipient))throw new Error("Indica el nombre de quien recibe el material (máximo 80 caracteres).");
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(fields.movementDate) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(fields.movementTime))throw new Error("Indica la fecha y hora del movimiento.");
+ const notes = "Fecha y hora: "+fields.movementDate+" "+fields.movementTime+" (CDMX)\nEntregado a: "+recipient+"\n\n"+fields.notes.trim();
+ if(notes.length > 250)throw new Error("Reduce las observaciones para guardar el movimiento.");
+ return notes;
+}
+
 function openMovements(){
  const fields = $("#movementForm").elements;
+ if(!fields.movementDate.value)resetMovementDateTime();
  if(!fields.rack.value){
   fields.rack.value = state.rack;
   fields.position.value = state.position;
@@ -858,10 +885,12 @@ async function loadMovements(){
   if(!navigator.onLine)throw new Error("Se requiere conexión");
   const data = await api("movements");
   history.innerHTML = data.movements.map(function(m){
+   const details = movementDetails(m.notes);
+   const delivery = details ? '<div>Fecha y hora: '+esc(details.date.split("-").reverse().join("/"))+' · '+esc(details.time)+' (CDMX)</div><div>Entregado a: '+esc(details.recipient)+'</div>' : '<div class="muted">Fecha del movimiento y destinatario: sin registrar</div>';
    return '<div class="result"><strong>'+esc(m.type)+' · '+esc(m.quantity)+' pzas · '+esc(m.code)+
     '</strong><div>'+esc(m.description)+'</div><div class="muted">Rack '+esc(m.rack)+
-    ' · P'+esc(m.position)+' · N'+esc(m.level)+' · '+esc(m.date)+' · '+esc(m.user)+
-    '</div><div>'+esc(m.notes)+'</div></div>';
+    ' · P'+esc(m.position)+' · N'+esc(m.level)+' · Capturado: '+esc(m.date)+' · Capturista: '+esc(m.user)+
+    '</div>'+delivery+'<div>'+esc(details ? details.notes : m.notes)+'</div></div>';
   }).join("");
   if(!data.movements.length)history.textContent = "Aún no hay movimientos registrados.";
  }catch(error){
@@ -897,6 +926,7 @@ $("#movementForm").onsubmit = async function(event){
  fields.user = cfg.user;
  fields.code = fields.code.trim().toUpperCase();
  fields.rack = fields.rack.toUpperCase();
+ try{fields.notes = movementNotes(fields)}catch(error){status.textContent = error.message;return}
  const key = JSON.stringify(fields);
  if(!movementAttempt || movementAttempt.key !== key)movementAttempt = {key:key,id:newClientId()};
  const controls = Array.from(this.elements).filter(function(control){return !control.disabled});
@@ -909,6 +939,8 @@ $("#movementForm").onsubmit = async function(event){
   updateMovementMaterial(false);
   this.elements.quantity.value = "";
   this.elements.notes.value = "";
+  this.elements.recipient.value = "";
+  resetMovementDateTime();
   status.textContent = "Movimiento registrado en Sheets.";
   loadMovements();
  }catch(error){
